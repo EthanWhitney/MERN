@@ -7,10 +7,16 @@ const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MER
 const client = new MongoClient(url);
 client.connect();
 
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+
 const app = express();
 app.use(cors());
 // app.use(bodyParser.json());
 app.use(express.json());
+
+// Use routes
+app.use('/api/auth', authRoutes);
 
 app.post('/api/addcard', async (req, res, next) =>
 {
@@ -70,21 +76,29 @@ app.post('/api/searchcards', async (req, res, next) =>
 
   var error = '';
 
-  const { userId, search } = req.body;
-
-  var _search = search.trim();
-  
-  const db = client.db('COP4331Cards');
-  const results = await db.collection('Cards').find({"Card":{$regex:_search+'.*', $options:'i'}}).toArray();
-  
-  var _ret = [];
-  for( var i=0; i<results.length; i++ )
+  try
   {
-    _ret.push( results[i].Card );
+    const { userId, search } = req.body;
+
+    var _search = search.trim();
+    
+    const db = client.db('COP4331Cards');
+    const results = await db.collection('Cards').find({"Card":{$regex:_search+'.*', $options:'i'}}).toArray();
+    
+    var _ret = [];
+    for( var i=0; i<results.length; i++ )
+    {
+      _ret.push( results[i].Card );
+    }
+    var ret = { results: _ret, error: error };
+    res.status(200).json(ret);
   }
-  
-  var ret = {results:_ret, error:error};
-  res.status(200).json(ret);
+  catch(e)
+  {
+    error = e.toString();
+    var ret = { results: [], error: error };
+    res.status(500).json(ret);
+  }
 });
 
 app.use((req, res, next) => 
