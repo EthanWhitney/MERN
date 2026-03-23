@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -110,7 +110,40 @@ const login = async (req, res) => {
   }
 };
 
+const getUserProfile = async (req, res) => {
+  const { userId } = req.body;
+  let error = '';
+
+  try {
+    // Validate required fields
+    if (!userId) {
+      error = 'Invalid user ID';
+      return res.status(400).json({ userId: null, username: '', error });
+    }
+
+    const db = client.db('discord_clone');
+
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    if (!user) {
+      error = 'User with the provided ID does not exist';
+      return res.status(401).json({ userId: null, username: '', error });
+    }
+
+    return res.status(200).json({
+      username: user.username,
+      profilePicture: user.profilePicture,
+      error: ''
+    });
+  }
+  catch (e) {
+    error = e.toString();
+    return res.status(500).json({ userId: null, username: '', error });
+  }
+};
+
 module.exports = {
   register,
-  login
+  login,
+  getUserProfile
 };
