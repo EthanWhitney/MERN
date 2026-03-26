@@ -11,6 +11,8 @@ client.connect();
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const serverRoutes = require('./routes/serverRoutes');
 const sendGridRoutes = require('./routes/sendGridRoutes');
 
 const app = express();
@@ -20,6 +22,8 @@ app.use(express.json());
 
 // Use routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/servers', serverRoutes);
 app.use('/api/sendgrid', sendGridRoutes);
 
 app.post('/api/addcard', async (req, res, next) =>
