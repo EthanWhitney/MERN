@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ObjectId } = require('mongodb');
+const jwtManager = require('../createJWT');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -135,18 +136,27 @@ const login = async (req, res) => {
     // Check if user is active (email verified)
     if (!user.active) {
       error = 'Please verify your email before logging in';
-      return res.status(401).json({ userId: null, username: '', error });
+      return res.status(401).json({ userId: null, username: '', accessToken: '', error });
+    }
+
+    // Generate JWT access token
+    const tokenResult = jwtManager.createToken(user._id.toString(), user.email, user.username);
+    
+    if (tokenResult.error) {
+      error = tokenResult.error;
+      return res.status(500).json({ userId: null, username: '', accessToken: '', error });
     }
 
     return res.status(200).json({
       userId: user._id.toString(),
       username: user.username,
+      accessToken: tokenResult.accessToken,
       error: ''
     });
   }
   catch (e) {
     error = e.toString();
-    return res.status(500).json({ userId: null, username: '', error });
+    return res.status(500).json({ userId: null, username: '', accessToken: '', error });
   }
 };
 

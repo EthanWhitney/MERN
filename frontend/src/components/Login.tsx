@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildPath } from "../utils/config";
+import { storeToken } from "../utils/tokenStorage";
 
 function Login()
 {
@@ -34,13 +35,21 @@ function Login()
 
           var res = JSON.parse(await response.text());
 
-          if( res.id <= 0 )
+          if( res.error && res.error.length > 0 )
           {
-              setMessage('User/Password combination incorrect');
+              setMessage(res.error);
+          }
+          else if( !res.accessToken || res.accessToken.length === 0 )
+          {
+              setMessage('Login failed: No token received');
           }
           else
           {
-              var user = {firstName:res.firstName,lastName:res.lastName,id:res.id}
+              // Store JWT token
+              storeToken(res.accessToken);
+              
+              // Store user data
+              var user = {username:res.username,id:res.userId}
               localStorage.setItem('user_data', JSON.stringify(user));
 
               setMessage('');

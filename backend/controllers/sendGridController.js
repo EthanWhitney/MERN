@@ -26,10 +26,13 @@ if (!client.topology || !client.topology.isConnected()) {
 // Send verification email
 const sendVerificationEmail = async (req, res) => {
   const { email, username, token } = req.body;
+  console.log('sendVerificationEmail called with:', { email, username, tokenExists: !!token });
+  console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'Set' : 'NOT SET');
 
   try {
     // Validate required fields
     if (!email || !username || !token) {
+      console.log('Validation failed - missing fields:', { email: !!email, username: !!username, token: !!token });
       return res.status(400).json({ success: false, error: 'Email, username, and token are required' });
     }
 
@@ -54,6 +57,9 @@ const sendVerificationEmail = async (req, res) => {
       `
     };
 
+    console.log('About to send email to:', email);
+    console.log('Verification link:', verificationLink);
+
     // Send email using official SendGrid SDK
     await sgMail.send(msg);
     
@@ -62,6 +68,7 @@ const sendVerificationEmail = async (req, res) => {
 
   } catch (error) {
     console.error('Error sending verification email:', error.message);
+    console.error('Full error object:', error);
     return res.status(500).json({ success: false, error: 'Failed to send verification email: ' + error.message });
   }
 };
