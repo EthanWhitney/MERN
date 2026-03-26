@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline - Frontend
 
 on:
   push:
@@ -18,14 +18,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20.16.0
-      - name: Install backend dependencies
-        run: |
-          cd backend
-          npm install
-      - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm install
+      - name: Install dependencies
+        run: cd frontend && npm install
 
   deploy:
     needs: build
@@ -44,19 +38,9 @@ jobs:
           sshpass -p "${SSH_KEY}" ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${SSH_HOST} << 'EOF'
           cd ~/MERN
           git pull origin main
-          
-          # Build frontend
           cd frontend
           npm install
           npm run build
           sudo cp -r dist/* /var/www/html/
-          
-          # Update backend
-          cd ../backend
-          npm install
-          
-          # Restart services
-          pm2 restart mern-backend
           sudo systemctl restart nginx
-          
           EOF
