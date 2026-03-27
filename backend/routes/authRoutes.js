@@ -11,4 +11,10 @@ router.post('/login', authController.login);
 // POST /api/auth/getUserProfile
 router.post('/getUserProfile', authController.getUserProfile);
 
+// POST /api/auth/verify-email
+router.post('/verify-email', authController.verifyEmail);
+
+// POST /api/auth/resend-code
+router.post('/resend-code', authController.resendVerificationCode);
+
 module.exports = router;

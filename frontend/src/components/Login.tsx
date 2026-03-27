@@ -22,7 +22,7 @@ function Login()
   {
       event.preventDefault();
 
-      var obj = {login:loginName,password:loginPassword};
+      var obj = {emailOrUsername:loginName,password:loginPassword};
       var js = JSON.stringify(obj);
 
       try
@@ -67,7 +67,7 @@ function Login()
       <input
         type="text"
         id="loginName"
-        placeholder="Username"
+        placeholder="Email or Username"
         onChange={handleSetLoginName}
       /><br />
 

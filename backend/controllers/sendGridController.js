@@ -1,6 +1,7 @@
 const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ObjectId } = require('mongodb');
+const { getVerificationCodeEmailTemplate, getVerificationCodeEmailTextTemplate } = require('../utils/emailTemplates');
 require('dotenv').config();
 
 // Set SendGrid API key
@@ -25,40 +26,65 @@ if (!client.topology || !client.topology.isConnected()) {
 
 // Send verification email
 const sendVerificationEmail = async (req, res) => {
-  const { email, username, token } = req.body;
-  console.log('sendVerificationEmail called with:', { email, username, tokenExists: !!token });
+  const { email, username, verificationCode, token } = req.body;
+  console.log('sendVerificationEmail called with:', {
+    email,
+    username,
+    codeExists: !!verificationCode,
+    tokenExists: !!token
+  });
   console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'Set' : 'NOT SET');
 
   try {
     // Validate required fields
-    if (!email || !username || !token) {
-      console.log('Validation failed - missing fields:', { email: !!email, username: !!username, token: !!token });
-      return res.status(400).json({ success: false, error: 'Email, username, and token are required' });
+    if (!email || !username || (!verificationCode && !token)) {
+      console.log('Validation failed - missing fields:', {
+        email: !!email,
+        username: !!username,
+        verificationCode: !!verificationCode,
+        token: !!token
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'Email, username, and verificationCode are required'
+      });
     }
 
-    // Create verification link using frontend URL
-    const frontendUrl = getFrontendUrl();
-    const verificationLink = `${frontendUrl}/verify/${token}`;
-
-    // Create email message using official SendGrid format
-    const msg = {
-      to: email,
-      from: 'syncord.space@gmail.com',
-      subject: 'Account Verification',
-      text: `Hello ${username}, please verify your account by clicking the link: ${verificationLink}`,
-      html: `
-        <h2>Welcome ${username}!</h2>
-        <p>Please verify your account by clicking the link below:</p>
-        <a href="${verificationLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-          Verify Account
-        </a>
-        <p>Or copy and paste this link: ${verificationLink}</p>
-        <p>This link will expire in 12000 seconds.</p>
-      `
-    };
-
     console.log('About to send email to:', email);
-    console.log('Verification link:', verificationLink);
+
+    let msg;
+
+    // Preferred flow: code-based verification email using shared templates.
+    if (verificationCode) {
+      msg = {
+        to: email,
+        from: 'syncord.space@gmail.com',
+        subject: 'Verify Your Email - Syncord',
+        text: getVerificationCodeEmailTextTemplate(username, verificationCode, 15),
+        html: getVerificationCodeEmailTemplate(username, verificationCode, 15)
+      };
+    } else {
+      // Backward-compatible fallback for token-link verification.
+      const frontendUrl = getFrontendUrl();
+      const verificationLink = `${frontendUrl}/verify/${token}`;
+      console.log('Verification link:', verificationLink);
+
+      msg = {
+        to: email,
+        from: 'syncord.space@gmail.com',
+        subject: 'Account Verification',
+        text: `Hello ${username}, please verify your account by clicking the link: ${verificationLink}`,
+        html: `
+          <h2>Welcome ${username}!</h2>
+          <p>Please verify your account by clicking the link below:</p>
+          <a href="${verificationLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Verify Account
+          </a>
+          <p>Or copy and paste this link: ${verificationLink}</p>
+          <p>This link will expire in 12000 seconds.</p>
+        `
+      };
+    }
 
     // Send email using official SendGrid SDK
     await sgMail.send(msg);

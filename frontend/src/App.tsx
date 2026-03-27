@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Navigate, Routes } from 'react-router-d
 import './App.css';
 import Token from './components/Token';
 import Register from './components/Register';
+import VerifyCode from './components/VerifyCode.tsx';
 import LoginPage from './pages/LoginPage';
 import CardPage from './pages/CardPage';
 
@@ -11,6 +12,7 @@ function App() {
     <Router >
       <Routes>
         <Route path="/verify/:token" element={<Token/>}/>
+        <Route path="/verify-code" element={<VerifyCode/>}/>
         <Route path="/" element={<LoginPage/>}/>
         <Route path="/login" element={<LoginPage/>}/>
         <Route path="/register" element={<Register/>}/>
