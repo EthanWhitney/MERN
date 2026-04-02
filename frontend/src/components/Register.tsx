@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildPath } from "../utils/config";
 
@@ -37,7 +37,7 @@ function Register() {
     }
 
     try {
-      // Step 1: Register user
+      // Register user and create pending verification record
       const registerResponse = await fetch(buildPath('api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,30 +51,15 @@ function Register() {
         return;
       }
 
-      // Step 2: Send verification email
-      const emailResponse = await fetch(buildPath('api/sendgrid/send-verification-email'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          username: username,
-          token: registerData.temporarytoken
-        })
-      });
+      // Persist pending verification state and route user to code entry page
+      localStorage.setItem('pending_verification_user_id', registerData.userId);
+      localStorage.setItem('pending_verification_email', email.toLowerCase());
 
-      const emailData = await emailResponse.json();
-
-      if (emailData.success) {
-        setMessage('Account created! Please check your email to verify your account.');
-        // Clear form
-        setEmail('');
-        setUsername('');
-        setPassword('');
-        // Redirect to login after 3 seconds
-        setTimeout(() => navigate('/login'), 3000);
-      } else {
-        setMessage('Account created but email verification failed. Please try again.');
-      }
+      setEmail('');
+      setUsername('');
+      setPassword('');
+      setMessage('Verification code sent. Redirecting...');
+      setTimeout(() => navigate('/verify-code'), 400);
     } catch (error: any) {
       console.error('Registration error:', error);
       setMessage('Registration failed. Please try again.');

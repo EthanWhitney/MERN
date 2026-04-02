@@ -1,6 +1,5 @@
 import PageTitle from '../components/PageTitle';
 import LoggedInName from '../components/LoggedInName';
-import CardUI from '../components/CardUI';
 
 const CardPage = () =>
 {
@@ -8,7 +7,7 @@ const CardPage = () =>
         <div>
             <PageTitle />
             <LoggedInName />
-            <CardUI />
+            <p>Card features coming soon...</p>
         </div>
     );
 }

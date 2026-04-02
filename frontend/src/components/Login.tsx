@@ -1,11 +1,9 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { buildPath } from "../utils/config";
+import { storeToken } from "../utils/tokenStorage";
 
 function Login()
 {
-  const navigate = useNavigate();
-
   const [message, setMessage] = useState('');
   const [loginName, setLoginName] = useState('');
   const [loginPassword, setPassword] = useState('');
@@ -24,7 +22,7 @@ function Login()
   {
       event.preventDefault();
 
-      var obj = {login:loginName,password:loginPassword};
+      var obj = {emailOrUsername:loginName,password:loginPassword};
       var js = JSON.stringify(obj);
 
       try
@@ -34,13 +32,21 @@ function Login()
 
           var res = JSON.parse(await response.text());
 
-          if( res.id <= 0 )
+          if( res.error && res.error.length > 0 )
           {
-              setMessage('User/Password combination incorrect');
+              setMessage(res.error);
+          }
+          else if( !res.accessToken || res.accessToken.length === 0 )
+          {
+              setMessage('Login failed: No token received');
           }
           else
           {
-              var user = {firstName:res.firstName,lastName:res.lastName,id:res.id}
+              // Store JWT token
+              storeToken(res.accessToken);
+              
+              // Store user data
+              var user = {username:res.username,id:res.userId}
               localStorage.setItem('user_data', JSON.stringify(user));
 
               setMessage('');
@@ -61,7 +67,7 @@ function Login()
       <input
         type="text"
         id="loginName"
-        placeholder="Username"
+        placeholder="Email or Username"
         onChange={handleSetLoginName}
       /><br />
 
