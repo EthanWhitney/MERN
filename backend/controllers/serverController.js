@@ -113,12 +113,12 @@ const updateServer = async (req, res) => {
       { returnDocument: 'after' }
     );
 
-    if (!result) {
+    if (!result.value) {
       error = 'Server not found';
       return res.status(404).json({ server: null, error });
     }
 
-    return res.status(200).json({ server: result, error: '' });
+    return res.status(200).json({ server: result.value, error: '' });
   } catch (e) {
     error = e.toString();
     return res.status(500).json({ server: null, error });
