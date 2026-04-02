@@ -107,18 +107,17 @@ const updateServer = async (req, res) => {
     if (description !== undefined) updates.description = description;
 
     const db = client.db('discord_clone');
-    const result = await db.collection('servers').findOneAndUpdate(
-      { _id: new ObjectId(serverId) },
-      { $set: updates },
-      { returnDocument: 'after' }
-    );
 
-    if (!result.value) {
+    const existing = await db.collection('servers').findOne({ _id: new ObjectId(serverId) });
+    if (!existing) {
       error = 'Server not found';
       return res.status(404).json({ server: null, error });
     }
 
-    return res.status(200).json({ server: result.value, error: '' });
+    await db.collection('servers').updateOne({ _id: new ObjectId(serverId) }, { $set: updates });
+    const updated = await db.collection('servers').findOne({ _id: new ObjectId(serverId) });
+
+    return res.status(200).json({ server: updated, error: '' });
   } catch (e) {
     error = e.toString();
     return res.status(500).json({ server: null, error });
