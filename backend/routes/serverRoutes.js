@@ -1,17 +1,49 @@
 const express = require('express');
 const router = express.Router();
-const { createServer, getServer, updateServer, deleteServer } = require('../controllers/serverController');
- 
-// POST /api/servers
+
+const {
+  createServer,
+  getServer,
+  updateServer,
+  deleteServer,
+} = require('../controllers/serverController');
+
+const {
+  joinServer,
+  leaveServer,
+  getServerMembers,
+  updateServerProfile,
+  assignRole,
+  removeRole,
+} = require('../controllers/membershipController');
+
+const {
+  createRole,
+  updateRole,
+  deleteRole,
+  getServerRoles,
+} = require('../controllers/rolesController');
+
+// server crud
 router.post('/', createServer);
- 
-// GET /api/servers/:serverId
 router.get('/:serverId', getServer);
- 
-// PATCH /api/servers/:serverId
 router.patch('/:serverId', updateServer);
- 
-// DELETE /api/servers/:serverId
 router.delete('/:serverId', deleteServer);
- 
+
+// server membership
+router.post('/:serverId/join', joinServer);
+router.delete('/:serverId/leave', leaveServer);
+router.get('/:serverId/members', getServerMembers);
+router.patch('/:serverId/profile/:userId', updateServerProfile);
+
+// server role assignment
+router.post('/:serverId/members/:userId/roles/:roleId', assignRole);
+router.delete('/:serverId/members/:userId/roles/:roleId', removeRole);
+
+// server roles crud
+router.post('/:serverId/roles', createRole);
+router.get('/:serverId/roles', getServerRoles);
+router.patch('/:serverId/roles/:roleId', updateRole);
+router.delete('/:serverId/roles/:roleId', deleteRole);
+
 module.exports = router;
