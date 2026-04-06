@@ -35,13 +35,18 @@ const FriendsPage = () => {
 
       try {
         const response = await authFetch(buildPath(`api/users/${userId}/friends`));
-        const payload = await response.json();
-
-        if (!response.ok || payload.error) {
-          setError(payload.error || 'Unable to load friends.');
+        
+        if (!response.ok) {
+          setError('Failed to load friends.');
           setFriends([]);
         } else {
-          setFriends(payload.friends || []);
+          const payload = await response.json();
+          if (payload.error) {
+            setError(payload.error);
+            setFriends([]);
+          } else {
+            setFriends(payload.friends || []);
+          }
         }
       } catch (err: any) {
         setError(err?.toString?.() || 'Unable to load friends.');
@@ -64,9 +69,9 @@ const FriendsPage = () => {
         const response = await authFetch(
           buildPath(`api/chat/dm/${selectedFriend._id}?limit=50`)
         );
-        const payload = await response.json();
 
-        if (response.ok && payload.messages) {
+        if (response.ok) {
+          const payload = await response.json();
           setMessages(payload.messages || []);
         } else {
           setMessages([]);
