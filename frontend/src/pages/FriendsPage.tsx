@@ -108,11 +108,11 @@ const FriendsPage = () => {
                   messages.map((msg, idx) => (
                     <div
                       key={idx}
-                      className={`message ${msg.sender?.userId === userId ? 'message-sent' : 'message-received'}`}
+                      className={`message ${msg.senderId === userId || msg.sender?.userId === userId ? 'message-sent' : 'message-received'}`}
                     >
                       <div className="message-content">{msg.message || msg.content}</div>
                       <span className="message-time">
-                        {new Date(msg.createdAt).toLocaleTimeString()}
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'Just now'}
                       </span>
                     </div>
                   ))
