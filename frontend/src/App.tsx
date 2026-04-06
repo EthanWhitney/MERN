@@ -1,4 +1,4 @@
-//import React from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Route, Navigate, Routes } from 'react-router-dom';
 import './App.css';
 import Token from './components/Token';
@@ -9,7 +9,7 @@ import CardPage from './pages/CardPage';
 import ChatPage from './pages/ChatPage';
 import { isTokenValid } from './utils/tokenStorage';
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   if (!isTokenValid()) {
     return <Navigate to="/login" replace />;
   }

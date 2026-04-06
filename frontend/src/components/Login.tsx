@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { buildPath } from "../utils/config";
-import { storeToken } from "../utils/tokenStorage";
+import { storeTokens } from "../utils/tokenStorage";
 
 function Login()
 {
@@ -36,14 +36,14 @@ function Login()
           {
               setMessage(res.error);
           }
-          else if( !res.accessToken || res.accessToken.length === 0 )
+          else if( !res.accessToken || res.accessToken.length === 0 || !res.refreshToken || res.refreshToken.length === 0 )
           {
-              setMessage('Login failed: No token received');
+              setMessage('Login failed: Missing token data');
           }
           else
           {
-              // Store JWT token
-              storeToken(res.accessToken);
+              // Store auth tokens
+              storeTokens(res.accessToken, res.refreshToken);
               
               // Store user data
               var user = {username:res.username,id:res.userId}

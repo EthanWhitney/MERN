@@ -151,24 +151,25 @@ const login = async (req, res) => {
       return res.status(401).json({ userId: null, username: '', error });
     }
 
-    // Generate JWT access token
-    const tokenResult = jwtManager.createToken(user._id.toString(), user.email, user.username);
+    // Generate access + refresh tokens
+    const tokenResult = jwtManager.createTokenPair(user._id.toString(), user.email, user.username);
     
     if (tokenResult.error) {
       error = tokenResult.error;
-      return res.status(500).json({ userId: null, username: '', accessToken: '', error });
+      return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
     }
 
     return res.status(200).json({
       userId: user._id.toString(),
       username: user.username,
       accessToken: tokenResult.accessToken,
+      refreshToken: tokenResult.refreshToken,
       error: ''
     });
   }
   catch (e) {
     error = e.toString();
-    return res.status(500).json({ userId: null, username: '', accessToken: '', error });
+    return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
   }
 };
 
@@ -267,8 +268,8 @@ const verifyEmail = async (req, res) => {
     // Delete from unverifiedUsers collection
     await db.collection('unverifiedUsers').deleteOne({ _id: new ObjectId(userId) });
 
-    // Generate JWT token
-    const tokenResult = jwtManager.createToken(newUserId, newUser.email, newUser.username);
+    // Generate access + refresh tokens
+    const tokenResult = jwtManager.createTokenPair(newUserId, newUser.email, newUser.username);
     
     if (tokenResult.error) {
       error = tokenResult.error;
@@ -280,6 +281,7 @@ const verifyEmail = async (req, res) => {
       userId: newUserId,
       username: newUser.username,
       accessToken: tokenResult.accessToken,
+      refreshToken: tokenResult.refreshToken,
       error: '' 
     });
   }
@@ -369,11 +371,48 @@ const resendVerificationCode = async (req, res) => {
   }
 };
 
+const refreshAccessToken = async (req, res) => {
+  const { refreshToken } = req.body;
+  let error = '';
+
+  try {
+    if (!refreshToken) {
+      error = 'refreshToken is required';
+      return res.status(400).json({ accessToken: '', refreshToken: '', error });
+    }
+
+    const refreshResult = jwtManager.refreshFromRefreshToken(refreshToken);    
+    if (refreshResult.error) {
+      return res.status(401).json({ accessToken: '', refreshToken: '', error: 'Invalid or expired refresh token' });
+    }
+
+    const db = client.db('discord_clone');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(refreshResult.userId) });
+    if (!user) {
+      return res.status(401).json({ accessToken: '', refreshToken: '', error: 'User no longer exists' });
+    }
+
+    const tokenResult = jwtManager.createTokenPair(user._id.toString(), user.email, user.username);
+    if (tokenResult.error) {
+      return res.status(500).json({ accessToken: '', refreshToken: '', error: tokenResult.error });
+    }
+
+    return res.status(200).json({
+      accessToken: tokenResult.accessToken,
+      refreshToken: tokenResult.refreshToken,
+      error: '',
+    });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ accessToken: '', refreshToken: '', error }); 
+  }
+};
 
 module.exports = {
   register,
   login,
   getUserProfile,
   verifyEmail,
-  resendVerificationCode
+  resendVerificationCode,
+  refreshAccessToken
 };
