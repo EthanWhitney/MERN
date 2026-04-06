@@ -55,7 +55,7 @@ const addFriend = async (req, res) => {
     const friendProfiles = await db
       .collection('users')
       .find({ _id: { $in: friendIds } })
-      .project({ username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
     return res.status(200).json({ friends: friendProfiles, error: '' });
@@ -132,7 +132,7 @@ const getFriends = async (req, res) => {
     const friendProfiles = await db
       .collection('users')
       .find({ _id: { $in: friendIds } })
-      .project({ username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
     return res.status(200).json({ friends: friendProfiles, error: '' });

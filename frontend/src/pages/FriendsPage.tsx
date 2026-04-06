@@ -34,7 +34,7 @@ const FriendsPage = () => {
       setError('');
 
       try {
-        const response = await fetch(buildPath(`api/users/${userId}/friends`));
+        const response = await authFetch(buildPath(`api/users/${userId}/friends`));
         const payload = await response.json();
 
         if (!response.ok || payload.error) {
