@@ -104,7 +104,7 @@ function Register() {
 
       <span id="registerResult">{message}</span><br />
 
-      <button id="backToLoginButton" onClick={() => navigate('/login')}>
+      <button id="backToLoginButton" className="buttons" onClick={() => navigate('/login')}>
         Back to Login
       </button>
     </div>
