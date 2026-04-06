@@ -1,115 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import './FriendsPage.css';
-import { buildPath } from '../utils/config';
-import { authFetch } from '../utils/authFetch';
+import { useFriendsChat } from '../hooks/useFriendsChat';
 
 const FriendsPage = () => {
-  const [friends, setFriends] = useState<any[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<any | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const {
+    userId,
+    friends,
+    selectedFriend,
+    setSelectedFriend,
+    messages,
+    loading,
+    error,
+    isSending,
+    sendMessage,
+  } = useFriendsChat();
+
   const [messageInput, setMessageInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
-
-  const userId = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('user_data');
-      if (!raw) return '';
-      const parsed = JSON.parse(raw);
-      return parsed.id || parsed.userId || '';
-    } catch {
-      return '';
-    }
-  }, []);
-
-  useEffect(() => {
-    const loadFriends = async () => {
-      if (!userId) {
-        setError('No user logged in.');
-        return;
-      }
-
-      setIsLoading(true);
-      setError('');
-
-      try {
-        const response = await authFetch(buildPath(`api/users/${userId}/friends`));
-        
-        if (!response.ok) {
-          setError('Failed to load friends.');
-          setFriends([]);
-        } else {
-          const payload = await response.json();
-          if (payload.error) {
-            setError(payload.error);
-            setFriends([]);
-          } else {
-            setFriends(payload.friends || []);
-          }
-        }
-      } catch (err: any) {
-        setError(err?.toString?.() || 'Unable to load friends.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadFriends();
-  }, [userId]);
-
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!selectedFriend || !userId) {
-        setMessages([]);
-        return;
-      }
-
-      try {
-        const response = await authFetch(
-          buildPath(`api/chat/dm/${selectedFriend._id}?limit=50`)
-        );
-
-        if (response.ok) {
-          const payload = await response.json();
-          setMessages(payload.messages || []);
-        } else {
-          setMessages([]);
-        }
-      } catch (err: any) {
-        console.error('Error loading messages:', err);
-        setMessages([]);
-      }
-    };
-
-    loadMessages();
-  }, [selectedFriend, userId]);
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedFriend || !userId) return;
-
-    setIsSending(true);
-    try {
-      const response = await authFetch(
-        buildPath(`api/chat/dm/${selectedFriend._id}`),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: messageInput }),
-        }
-      );
-
-      if (response.ok) {
-        const payload = await response.json();
-        if (payload.message) {
-          setMessages([...messages, payload.message]);
-          setMessageInput('');
-        }
-      }
-    } catch (err: any) {
-      console.error('Error sending message:', err);
-    } finally {
-      setIsSending(false);
+    const success = await sendMessage(messageInput);
+    if (success) {
+      setMessageInput('');
     }
   };
 
@@ -135,17 +46,17 @@ const FriendsPage = () => {
           </section>
 
           <section className="friends-list" aria-label="Friends list">
-            {isLoading && <div className="friends-empty">Loading friends...</div>}
-            {!isLoading && error && (
+            {loading && <div className="friends-empty">Loading friends...</div>}
+            {!loading && error && (
               <div className="friends-empty">{error}</div>
             )}
-            {!isLoading && !error && friends.length === 0 && (
+            {!loading && !error && friends.length === 0 && (
               <div className="friends-empty">
                 <p>No friends yet.</p>
                 <span>Once you add friends, they will show up here.</span>
               </div>
             )}
-            {!isLoading && !error &&
+            {!loading && !error &&
               friends.map((friend) => (
                 <article
                   className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
