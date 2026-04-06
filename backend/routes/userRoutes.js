@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/tokenMiddleware');
 const { getUserServers } = require('../controllers/serverController');
-const { addFriend, removeFriend, getFriends } = require('../controllers/friendsController');
+const { addFriend, removeFriend, getFriends, searchUserByUsername } = require('../controllers/friendsController');
+
+// GET /api/users/search?username=xxx
+router.get('/search', verifyToken, searchUserByUsername);
 
 // GET /api/users/servers
 router.get('/servers', verifyToken, getUserServers);

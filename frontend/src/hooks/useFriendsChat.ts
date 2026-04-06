@@ -147,6 +147,59 @@ export const useFriendsChat = () => {
     }
   };
 
+  // Add friend by username
+  const addFriend = async (username: string): Promise<boolean> => {
+    if (!userId) {
+      throw new Error('Not logged in');
+    }
+
+    try {
+      // First, search for user by username
+      const searchResponse = await authFetch(
+        `api/users/search?username=${encodeURIComponent(username)}`
+      );
+
+      if (!searchResponse.ok) {
+        const errorPayload = await searchResponse.json();
+        throw new Error(errorPayload.error || 'User not found');
+      }
+
+      const searchData = await searchResponse.json();
+      const friendId = searchData.user?._id;
+
+      if (!friendId) {
+        throw new Error('User not found');
+      }
+
+      // Then add them as a friend
+      const addResponse = await authFetch(
+        `api/users/friends/${friendId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!addResponse.ok) {
+        const errorPayload = await addResponse.json();
+        throw new Error(errorPayload.error || 'Failed to add friend');
+      }
+
+      const payload = await addResponse.json();
+      
+      // Update friends list with response
+      if (payload.friends && Array.isArray(payload.friends)) {
+        setFriends(payload.friends);
+      }
+
+      return true;
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Failed to add friend';
+      console.error('Error adding friend:', errorMsg);
+      throw new Error(errorMsg);
+    }
+  };
+
   return {
     userId,
     friends,
@@ -157,5 +210,6 @@ export const useFriendsChat = () => {
     error,
     isSending,
     sendMessage,
+    addFriend,
   };
 };

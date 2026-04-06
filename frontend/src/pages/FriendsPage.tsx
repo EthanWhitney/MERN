@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './FriendsPage.css';
 import { useFriendsChat } from '../hooks/useFriendsChat';
+import AddFriendModal from '../components/AddFriendModal';
 
 const FriendsPage = () => {
   const {
@@ -13,14 +14,29 @@ const FriendsPage = () => {
     error,
     isSending,
     sendMessage,
+    addFriend,
   } = useFriendsChat();
 
   const [messageInput, setMessageInput] = useState('');
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [isAddingFriend, setIsAddingFriend] = useState(false);
 
   const handleSendMessage = async () => {
     const success = await sendMessage(messageInput);
     if (success) {
       setMessageInput('');
+    }
+  };
+
+  const handleAddFriend = async (username: string): Promise<boolean> => {
+    setIsAddingFriend(true);
+    try {
+      await addFriend(username);
+      return true;
+    } catch (err) {
+      throw err;
+    } finally {
+      setIsAddingFriend(false);
     }
   };
 
@@ -40,8 +56,12 @@ const FriendsPage = () => {
               placeholder="Search friends"
               aria-label="Search friends"
             />
-            <button className="friends-action" type="button">
-              New chat
+            <button 
+              className="friends-action" 
+              type="button"
+              onClick={() => setShowAddFriendModal(true)}
+            >
+              Add Friend
             </button>
           </section>
 
@@ -148,6 +168,13 @@ const FriendsPage = () => {
           )}
         </div>
       </div>
+
+      <AddFriendModal
+        isOpen={showAddFriendModal}
+        onClose={() => setShowAddFriendModal(false)}
+        onAddFriend={handleAddFriend}
+        isLoading={isAddingFriend}
+      />
     </div>
   );
 };

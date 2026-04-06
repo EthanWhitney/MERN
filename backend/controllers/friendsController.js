@@ -153,4 +153,36 @@ const getFriends = async (req, res) => {
   }
 };
 
-module.exports = { addFriend, removeFriend, getFriends };
+// search user by username
+// GET /api/users/search?username=xxx
+const searchUserByUsername = async (req, res) => {
+  const { username } = req.query;
+  
+  try {
+    if (!username || typeof username !== 'string' || !username.trim()) {
+      return res.status(400).json({ user: null, error: 'Username is required' });
+    }
+
+    const db = client.db('discord_clone');
+    const user = await db.collection('users').findOne({ username: username.trim() });
+
+    if (!user) {
+      return res.status(404).json({ user: null, error: 'User not found' });
+    }
+
+    // Don't return sensitive info, just what's needed for friend operations
+    return res.status(200).json({
+      user: {
+        _id: user._id,
+        username: user.username,
+        profilePicture: user.profilePicture || '',
+      },
+      error: '',
+    });
+  } catch (e) {
+    console.error('Error in searchUserByUsername:', e.toString());
+    return res.status(500).json({ user: null, error: e.toString() });
+  }
+};
+
+module.exports = { addFriend, removeFriend, getFriends, searchUserByUsername };
