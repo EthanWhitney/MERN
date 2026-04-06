@@ -1,34 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
 
 .dm-screen {
   position: fixed;
   inset: 0;
-  font-family: 'Space Grotesk', sans-serif;
-  background: radial-gradient(circle at top, #2a2f4f 0%, #11121b 45%, #0a0a10 100%);
+  font-family: 'Manrope', sans-serif;
+  background: #1f232b;
   display: grid;
   place-items: center;
-  color: #f9f6f2;
+  color: #e6e9ee;
   overflow: hidden;
   z-index: 10;
 }
 
 .dm-glow {
-  position: absolute;
-  inset: -20% 0 auto 0;
-  height: 40vh;
-  background: radial-gradient(circle at 30% 40%, rgba(255, 170, 77, 0.4), transparent 55%),
-    radial-gradient(circle at 70% 40%, rgba(117, 207, 255, 0.45), transparent 60%);
-  filter: blur(40px);
-  opacity: 0.9;
+  display: none;
 }
 
 .dm-phone {
   width: min(92vw, 430px);
   height: min(92vh, 820px);
-  background: rgba(16, 17, 25, 0.92);
-  border-radius: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 40px 120px rgba(10, 12, 30, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  background: #2f3848;
+  border-radius: 18px;
+  border: 1px solid #2f3746;
+  box-shadow: 0 20px 50px rgba(10, 12, 18, 0.45);
   display: grid;
   grid-template-rows: auto 1fr auto;
   position: relative;
@@ -40,9 +34,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 18px 16px;
-  background: linear-gradient(135deg, rgba(30, 34, 56, 0.95), rgba(18, 20, 30, 0.9));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 16px;
+  background: #222a37;
+  border-bottom: 1px solid #2f3746;
 }
 
 .dm-user {
@@ -55,14 +49,12 @@
 .dm-avatar {
   width: 44px;
   height: 44px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #ffb35c, #ff7a90);
-  color: #15151f;
-  font-family: 'Unbounded', sans-serif;
-  font-weight: 700;
+  border-radius: 50%;
+  background: #3c4658;
+  color: #dbe2ea;
+  font-weight: 600;
   display: grid;
   place-items: center;
-  letter-spacing: 0.04em;
 }
 
 .dm-user-meta {
@@ -72,7 +64,7 @@
 
 .dm-user-name {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -80,16 +72,16 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 0.85rem;
+  color: #9aa3b2;
+  font-size: 0.8rem;
 }
 
 .dm-status-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #47f28a;
-  box-shadow: 0 0 12px rgba(71, 242, 138, 0.6);
+  background: #35c76a;
+  box-shadow: none;
 }
 
 .dm-header-actions {
@@ -100,9 +92,9 @@
 .dm-icon {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  border: 1px solid #2f3746;
+  background: #2f3746;
   color: inherit;
   display: grid;
   place-items: center;
@@ -113,28 +105,28 @@
 
 .dm-icon:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.12);
+  border-color: #3b4558;
+  background: #3b4558;
 }
 
 .dm-thread {
-  padding: 18px 18px 0;
+  padding: 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   scroll-behavior: smooth;
 }
 
 .dm-date {
   align-self: center;
-  font-size: 0.75rem;
-  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 6px 14px;
-  border-radius: 999px;
+  color: #9aa3b2;
+  background: #242c3a;
+  padding: 6px 12px;
+  border-radius: 8px;
 }
 
 .dm-empty {
@@ -175,7 +167,7 @@
   align-items: center;
   gap: 10px;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: #9aa3b2;
 }
 
 .dm-message-time {
@@ -184,11 +176,11 @@
 
 .dm-message-bubble {
   padding: 14px 16px;
-  border-radius: 18px;
+  border-radius: 10px;
   line-height: 1.4;
   font-size: 0.95rem;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #242c3a;
+  border: 1px solid #2f3746;
 }
 
 .dm-message-incoming .dm-message-bubble {
@@ -205,20 +197,20 @@
 }
 
 .dm-message-outgoing .dm-message-bubble {
-  background: linear-gradient(135deg, #7c9bff, #9b7cff);
-  color: #0c0d16;
-  border: none;
+  background: #2a3140;
+  color: #e6e9ee;
+  border: 1px solid #2f3746;
 }
 
 .dm-message-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: #3c4658;
   display: grid;
   place-items: center;
   font-weight: 600;
-  color: #ffdebf;
+  color: #dbe2ea;
 }
 
 .dm-typing {
@@ -226,7 +218,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 0 8px 48px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #9aa3b2;
   font-size: 0.8rem;
 }
 
@@ -239,7 +231,7 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: #9aa3b2;
   animation: dm-bounce 900ms ease infinite;
 }
 
@@ -254,18 +246,18 @@
 .dm-input {
   display: flex;
   gap: 10px;
-  padding: 16px 18px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(20, 22, 34, 0.7), rgba(12, 12, 20, 0.95));
+  padding: 12px 16px;
+  border-top: 1px solid #2f3746;
+  background: #222a37;
 }
 
 .dm-pill {
   width: 38px;
   height: 38px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffd37c;
+  border-radius: 8px;
+  border: 1px solid #2f3746;
+  background: #2f3746;
+  color: #e6e9ee;
   font-size: 1.2rem;
   cursor: pointer;
 }
@@ -276,11 +268,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.6);
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1b202a;
+  border: 1px solid #2f3746;
+  color: #9aa3b2;
 }
 
 .dm-input-placeholder {
@@ -294,10 +286,10 @@
 
 .dm-send {
   padding: 0 16px;
-  border-radius: 14px;
+  border-radius: 8px;
   border: none;
-  background: #ffb35c;
-  color: #1c120b;
+  background: #35c76a;
+  color: #0b1215;
   font-weight: 600;
   cursor: pointer;
   transition: transform 200ms ease, box-shadow 200ms ease;
@@ -305,7 +297,7 @@
 
 .dm-send:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(255, 179, 92, 0.25);
+  box-shadow: 0 10px 20px rgba(53, 199, 106, 0.25);
 }
 
 @keyframes dm-rise {
