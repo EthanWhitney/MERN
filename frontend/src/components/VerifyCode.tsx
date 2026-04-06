@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { buildPath } from "../utils/config";
-import { storeToken } from "../utils/tokenStorage";
+import { storeTokens } from "../utils/tokenStorage";
 
 function VerifyCode() {
   const navigate = useNavigate();
@@ -43,8 +43,8 @@ function VerifyCode() {
         return;
       }
 
-      // Store auth token and user context after successful verification
-      storeToken(data.accessToken);
+      // Store auth tokens and user context after successful verification
+      storeTokens(data.accessToken, data.refreshToken);
       localStorage.setItem('user_data', JSON.stringify({ username: data.username, id: data.userId }));
       localStorage.removeItem('pending_verification_user_id');
       localStorage.removeItem('pending_verification_email');

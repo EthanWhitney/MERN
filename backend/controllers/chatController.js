@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require('mongodb');
+<<<<<<< Updated upstream
 const jwt = require('jsonwebtoken');
 const {
 	getCursorPage,
@@ -10,6 +11,8 @@ const {
 	buildDmThread,
 	makeConversationKey,
 } = require('../services/chatThreadService');
+=======
+>>>>>>> Stashed changes
 require('dotenv').config();
 
 const url = process.env.MONGODB_URI;
@@ -30,6 +33,7 @@ const normalizeLimit = (value, fallback = 50) => {
 	return Math.min(parsed, 100);
 };
 
+<<<<<<< Updated upstream
 const isWithinMessageEditWindow = (messageDoc) => {
 	if (!messageDoc || !messageDoc.createdAt) {
 		return false;
@@ -68,6 +72,8 @@ const getRequestUserId = (req) => {
 	return null;
 };
 
+=======
+>>>>>>> Stashed changes
 const ensureIndexes = async (db) => {
 	if (indexesReady) {
 		return;
@@ -163,7 +169,7 @@ const sendMessage = async (req, res) => {
 	const { serverId, channelId } = req.params;
 	const { content, message, attachments = [] } = req.body;
 	const bodyContent = content || message;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(serverId) || !ObjectId.isValid(channelId)) {
 		return res.status(400).json({ message: null, error: 'Invalid server or channel ID' });
@@ -235,7 +241,7 @@ const getMessages = async (req, res) => {
 	const limit = normalizeLimit(req.query.limit, 50);
 	const offset = Math.max(parseInt(req.query.offset || '0', 10) || 0, 0);
 	const before = req.query.before;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(serverId) || !ObjectId.isValid(channelId)) {
 		return res.status(400).json({ messages: [], error: 'Invalid server or channel ID' });
@@ -314,7 +320,7 @@ const updateMessage = async (req, res) => {
 	const { serverId, channelId, messageId } = req.params;
 	const { content, message } = req.body;
 	const bodyContent = content || message;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(serverId) || !ObjectId.isValid(channelId) || !ObjectId.isValid(messageId)) {
 		return res.status(400).json({ message: null, error: 'Invalid server, channel, or message ID' });
@@ -383,7 +389,7 @@ const updateMessage = async (req, res) => {
 
 const deleteMessage = async (req, res) => {
 	const { serverId, channelId, messageId } = req.params;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(serverId) || !ObjectId.isValid(channelId) || !ObjectId.isValid(messageId)) {
 		return res.status(400).json({ message: null, error: 'Invalid server, channel, or message ID' });
@@ -442,7 +448,7 @@ const sendDirectMessage = async (req, res) => {
 	const { recipientId } = req.params;
 	const { content, message } = req.body;
 	const bodyContent = content || message;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(recipientId)) {
 		return res.status(400).json({ message: null, error: 'Invalid recipient ID' });
@@ -508,7 +514,7 @@ const getDirectMessages = async (req, res) => {
 	const { recipientId } = req.params;
 	const limit = normalizeLimit(req.query.limit, 50);
 	const before = req.query.before;
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!ObjectId.isValid(recipientId)) {
 		return res.status(400).json({ messages: [], error: 'Invalid recipient ID' });
@@ -699,7 +705,7 @@ const deleteDirectMessage = async (req, res) => {
 };
 
 const getDirectConversations = async (req, res) => {
-	const userId = getRequestUserId(req);
+	const { userId } = req;
 
 	if (!userId || !ObjectId.isValid(userId)) {
 		return res.status(401).json({ conversations: [], error: 'Valid userId is required' });

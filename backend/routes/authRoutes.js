@@ -17,4 +17,7 @@ router.post('/verify-email', authController.verifyEmail);
 // POST /api/auth/resend-code
 router.post('/resend-code', authController.resendVerificationCode);
 
+// POST /api/auth/refresh
+router.post('/refresh', authController.refreshAccessToken);
+
 module.exports = router;
