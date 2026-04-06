@@ -24,6 +24,13 @@ const {
   getServerRoles,
 } = require('../controllers/rolesController');
 
+const {
+  createTextChannel,
+  getTextChannels,
+  updateTextChannel,
+  deleteTextChannel,
+} = require('../controllers/textChannelsController');
+
 // server crud
 router.post('/', createServer);
 router.get('/:serverId', getServer);
@@ -45,5 +52,11 @@ router.post('/:serverId/roles', createRole);
 router.get('/:serverId/roles', getServerRoles);
 router.patch('/:serverId/roles/:roleId', updateRole);
 router.delete('/:serverId/roles/:roleId', deleteRole);
+
+// text channels crud
+router.post('/:serverId/textChannels', createTextChannel);
+router.get('/:serverId/textChannels', getTextChannels);
+router.patch('/:serverId/textChannels/:channelId', updateTextChannel);
+router.delete('/:serverId/textChannels/:channelId', deleteTextChannel);
 
 module.exports = router;
