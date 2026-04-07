@@ -24,48 +24,106 @@
   box-shadow: 0 20px 50px rgba(10, 12, 18, 0.45);
   display: grid;
   grid-template-rows: auto auto 1fr;
-  gap: 18px;
-  padding: 24px;
+  padding: 0;
   position: relative;
   overflow: hidden;
   animation: friends-rise 500ms ease forwards;
 }
 
-.friends-header {
+.friends-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #222a37;
+  border-bottom: 1px solid #2f3746;
 }
 
-.friends-title {
-  margin: 0;
-  font-size: 1.2rem;
-  letter-spacing: -0.02em;
+.friends-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.friends-status {
+.friends-topbar-title {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #242c3a;
-  color: #9aa3b2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.friends-title-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: inline-grid;
+  place-items: center;
+  background: #2f3746;
+  color: #dbe2ea;
+  font-weight: 800;
   font-size: 0.8rem;
 }
 
-.friends-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #35c76a;
-  box-shadow: none;
+.friends-title-text {
+  font-size: 1rem;
+}
+
+.friends-topbar-sep {
+  color: #9aa3b2;
+  opacity: 0.7;
+}
+
+.friends-topbar-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.friends-tab {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9aa3b2;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.friends-tab-active {
+  background: #2f3746;
+  color: #e6e9ee;
+  border-color: #2f3746;
+}
+
+.friends-addfriend {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: none;
+  background: #5865f2;
+  color: #f6f7ff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 200ms ease, filter 200ms ease;
+  white-space: nowrap;
+}
+
+.friends-addfriend:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
 }
 
 .friends-controls {
   display: flex;
   gap: 12px;
   align-items: center;
+  padding: 12px 14px;
+  background: #2a3140;
+  border-bottom: 1px solid #2f3746;
 }
 
 .friends-search {
@@ -104,7 +162,7 @@
   overflow-y: auto;
   display: grid;
   gap: 14px;
-  padding-right: 8px;
+  padding: 14px 14px 18px;
 }
 
 .friend-card {
@@ -209,7 +267,7 @@
     width: 100vw;
     height: 100vh;
     border-radius: 0;
-    padding: 20px 18px;
+    padding: 0;
   }
 
   .friends-controls {
