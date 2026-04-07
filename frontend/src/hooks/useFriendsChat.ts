@@ -48,6 +48,9 @@ export const useFriendsChat = () => {
       // Keep socket alive even when hook unmounts, only disconnect on complete logout
     };
   }, [userId]);
+
+  // Load friends list
+  useEffect(() => {
     const loadFriends = async () => {
       if (!userId) {
         setError('No user logged in.');
