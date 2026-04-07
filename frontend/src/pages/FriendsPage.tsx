@@ -17,6 +17,8 @@ const FriendsPage = () => {
     isSending,
     sendMessage,
     addFriend,
+    editMessage,
+    deleteMessage,
   } = useFriendsChat();
 
   const [messageInput, setMessageInput] = useState('');
@@ -155,6 +157,9 @@ const FriendsPage = () => {
                         senderAvatar={senderAvatar}
                         messages={group.messages}
                         isOwn={isOwn}
+                        userId={userId}
+                        onEditMessage={editMessage}
+                        onDeleteMessage={deleteMessage}
                       />
                     );
                   })
@@ -163,14 +168,14 @@ const FriendsPage = () => {
               </div>
 
               <div className="message-input-area">
-                <input
-                  type="text"
+                <textarea
                   className="message-input"
                   placeholder="Type a message..."
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !isSending) {
+                    if (e.key === 'Enter' && !e.shiftKey && !isSending) {
+                      e.preventDefault();
                       handleSendMessage();
                     }
                   }}

@@ -616,10 +616,6 @@ const updateDirectMessage = async (req, res) => {
 			return res.status(404).json({ message: null, error: 'Message not found' });
 		}
 
-		if (!isWithinMessageEditWindow(existingMessage)) {
-			return res.status(403).json({ message: null, error: 'Messages can only be edited within 5 minutes' });
-		}
-
 		const updatedMessage = await db.collection('directMessages').findOneAndUpdate(
 			{ _id: messageObjId },
 			{
@@ -684,10 +680,6 @@ const deleteDirectMessage = async (req, res) => {
 
 		if (!existingMessage) {
 			return res.status(404).json({ message: null, error: 'Message not found' });
-		}
-
-		if (!isWithinMessageEditWindow(existingMessage)) {
-			return res.status(403).json({ message: null, error: 'Messages can only be deleted within 5 minutes' });
 		}
 
 		await db.collection('directMessages').deleteOne({ _id: messageObjId });

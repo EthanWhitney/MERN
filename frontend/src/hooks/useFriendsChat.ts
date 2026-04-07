@@ -13,6 +13,8 @@ export interface ChatMessage {
   recipientId: string;
   message: string;
   createdAt?: string;
+  edited?: boolean;
+  editedAt?: string;
 }
 
 export const useFriendsChat = () => {
@@ -200,6 +202,80 @@ export const useFriendsChat = () => {
     }
   };
 
+  // Edit message
+  const editMessage = async (messageId: string, newContent: string): Promise<boolean> => {
+    if (!newContent.trim() || !selectedFriend || !userId) {
+      console.error('Edit validation failed:', { messageId, newContent: newContent.trim(), selectedFriend, userId });
+      return false;
+    }
+
+    try {
+      const endpoint = `api/chat/dms/${selectedFriend._id}/messages/${messageId}`;
+      console.log('Editing message:', { endpoint, newContent });
+      
+      const response = await authFetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newContent }),
+      });
+
+      console.log('Edit response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Edit error response:', { status: response.status, text: errorText });
+        throw new Error(`Failed to edit message (${response.status}): ${errorText}`);
+      }
+
+      const payload = await response.json();
+      console.log('Edit payload:', payload);
+      
+      if (payload.error) {
+        throw new Error(payload.error);
+      }
+
+      if (payload.message) {
+        setMessages(messages.map(msg => msg._id === messageId ? payload.message : msg));
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.error('Error editing message:', err);
+      return false;
+    }
+  };
+
+  // Delete message
+  const deleteMessage = async (messageId: string): Promise<boolean> => {
+    if (!selectedFriend || !userId) {
+      console.error('Delete validation failed:', { messageId, selectedFriend, userId });
+      return false;
+    }
+
+    try {
+      const endpoint = `api/chat/dms/${selectedFriend._id}/messages/${messageId}`;
+      console.log('Deleting message:', { endpoint });
+      
+      const response = await authFetch(endpoint, {
+        method: 'DELETE',
+      });
+
+      console.log('Delete response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Delete error response:', { status: response.status, text: errorText });
+        throw new Error(`Failed to delete message (${response.status}): ${errorText}`);
+      }
+
+      setMessages(messages.filter(msg => msg._id !== messageId));
+      return true;
+    } catch (err: any) {
+      console.error('Error deleting message:', err);
+      return false;
+    }
+  };
+
   return {
     userId,
     friends,
@@ -211,5 +287,7 @@ export const useFriendsChat = () => {
     isSending,
     sendMessage,
     addFriend,
+    editMessage,
+    deleteMessage,
   };
 };

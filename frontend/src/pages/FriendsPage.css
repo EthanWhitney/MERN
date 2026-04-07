@@ -385,13 +385,18 @@
 
 .message-input {
   flex: 1;
-  height: 44px;
+  min-height: 44px;
+  max-height: 120px;
   border-radius: 8px;
   border: 1px solid #2f3746;
   background: #1b202a;
   color: inherit;
-  padding: 0 16px;
+  padding: 8px 16px;
   font-size: 0.95rem;
+  font-family: 'Manrope', sans-serif;
+  line-height: 1.4;
+  resize: vertical;
+  overflow-y: auto;
 }
 
 .message-input::placeholder {
@@ -439,6 +444,213 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Context Menu Styles */
+.message-context-menu {
+  z-index: 1000;
+  background: #2f3848;
+  border: 1px solid #3b4558;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  min-width: 120px;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: #e6e9ee;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  transition: background-color 200ms ease;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background-color: #3b4558;
+}
+
+.context-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.context-menu-delete {
+  color: #ff6b6b;
+}
+
+.context-menu-delete:hover:not(:disabled) {
+  background-color: rgba(255, 107, 107, 0.1);
+}
+
+/* Edit Mode Styles */
+.message-edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.message-edit-input {
+  min-height: 44px;
+  max-height: 120px;
+  border-radius: 8px;
+  border: 1px solid #3b4558;
+  background: #1b202a;
+  color: #e6e9ee;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-family: 'Manrope', sans-serif;
+  line-height: 1.4;
+  resize: vertical;
+  overflow-y: auto;
+}
+
+.message-edit-input:focus {
+  outline: none;
+  border-color: #35c76a;
+}
+
+.message-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.message-edit-save,
+.message-edit-cancel {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.message-edit-save {
+  background: #35c76a;
+  color: #0b1215;
+}
+
+.message-edit-save:hover:not(:disabled) {
+  background: #2ba857;
+}
+
+.message-edit-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.message-edit-cancel {
+  background: #3b4558;
+  color: #e6e9ee;
+}
+
+.message-edit-cancel:hover:not(:disabled) {
+  background: #4a5666;
+}
+
+.message-edit-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Edited indicator */
+.message-edited {
+  font-size: 0.75rem;
+  color: #9aa3b2;
+  margin-left: 4px;
+  font-style: italic;
+}
+
+/* Custom Confirmation Dialog */
+.confirmation-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+}
+
+.confirmation-dialog {
+  background: #2f3848;
+  border: 1px solid #3b4558;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: dialog-appear 200ms ease;
+}
+
+.confirmation-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #e6e9ee;
+}
+
+.confirmation-message {
+  margin: 0 0 24px 0;
+  font-size: 0.95rem;
+  color: #dbe2ea;
+  line-height: 1.4;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirmation-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.confirmation-confirm {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+.confirmation-confirm:hover:not(:disabled) {
+  background: #ff5252;
+}
+
+.confirmation-cancel {
+  background: #3b4558;
+  color: #e6e9ee;
+}
+
+.confirmation-cancel:hover:not(:disabled) {
+  background: #4a5666;
+}
+
+.confirmation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes dialog-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

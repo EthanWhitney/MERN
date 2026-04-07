@@ -36,9 +36,9 @@ router.get('/api/chat/dms', verifyToken, getDirectConversations);
 router.get('/api/chat/dms/:recipientId/messages', verifyToken, getDirectMessages);
 
 // PATCH /api/chat/dms/:recipientId/messages/:messageId
-router.patch('/api/chat/dms/:recipientId/messages/:messageId', updateDirectMessage);
+router.patch('/api/chat/dms/:recipientId/messages/:messageId', verifyToken, updateDirectMessage);
 
 // DELETE /api/chat/dms/:recipientId/messages/:messageId
-router.delete('/api/chat/dms/:recipientId/messages/:messageId', deleteDirectMessage);
+router.delete('/api/chat/dms/:recipientId/messages/:messageId', verifyToken, deleteDirectMessage);
 
 module.exports = router;
