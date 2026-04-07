@@ -153,7 +153,7 @@ const login = async (req, res) => {
 
     // Generate access + refresh tokens
     const tokenResult = jwtManager.createTokenPair(user._id.toString(), user.email, user.username);
-    
+    console.log('Token generation result:', tokenResult);
     if (tokenResult.error) {
       error = tokenResult.error;
       return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
