@@ -1,5 +1,9 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
+console.log('🔍 DEBUG: JWT_SECRET present?', !!process.env.JWT_SECRET);
+console.log('🔍 DEBUG: __dirname:', __dirname);
+console.log('🔍 DEBUG: .env path:', require('path').join(__dirname, '.env'));
+
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -57,7 +61,7 @@ app.use((req, res, next) =>
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://syncord.space', 'https://syncord.space'],
     methods: ['GET', 'POST'],
     credentials: true
   }
