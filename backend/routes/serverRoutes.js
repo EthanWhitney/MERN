@@ -25,6 +25,15 @@ const {
   getServerRoles,
 } = require('../controllers/rolesController');
 
+const {
+  createVoiceChannel,
+  getVoiceChannels,
+  updateVoiceChannel,
+  deleteVoiceChannel,
+  joinVoiceChannel,
+  leaveVoiceChannel,
+} = require('../controllers/voiceChannelController');
+
 // server crud
 router.post('/', createServer);
 router.get('/:serverId', getServer);
@@ -49,5 +58,14 @@ router.post('/:serverId/roles', createRole);
 router.get('/:serverId/roles', getServerRoles);
 router.patch('/:serverId/roles/:roleId', updateRole);
 router.delete('/:serverId/roles/:roleId', deleteRole);
+
+// voice channels
+router.post('/:serverId/voiceChannels', createVoiceChannel);
+router.get('/:serverId/voiceChannels', getVoiceChannels);
+router.patch('/:serverId/voiceChannels/:channelId', updateVoiceChannel);
+router.delete('/:serverId/voiceChannels/:channelId', deleteVoiceChannel);
+router.post('/:serverId/voiceChannels/:channelId/join', joinVoiceChannel);
+router.delete('/:serverId/voiceChannels/:channelId/leave', leaveVoiceChannel);
+
 
 module.exports = router;
