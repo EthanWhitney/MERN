@@ -10,8 +10,8 @@ router.get('/search', verifyToken, searchUserByUsername);
 // GET /api/users/servers
 router.get('/servers', verifyToken, getUserServers);
 
-// GET /api/users/friends
-router.get('/friends', verifyToken, getFriends);
+// GET /api/users/:userId/friends
+router.get('/:userId/friends', verifyToken, getFriends);
 
 // POST /api/users/friends/:friendId
 router.post('/friends/:friendId', verifyToken, addFriend);

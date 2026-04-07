@@ -49,7 +49,7 @@ export const useFriendsChat = () => {
 
       try {
         console.log('Loading friends for userId:', userId);
-        const response = await authFetch(`api/users/friends`);
+        const response = await authFetch(`api/users/${userId}/friends`);
         
         console.log('Friends response status:', response.status);
         
