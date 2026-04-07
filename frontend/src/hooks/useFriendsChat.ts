@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { authFetch } from '../utils/authFetch';
-import { initSocket, joinDMRoom, sendDMMessage, onReceiveMessage, offReceiveMessage, disconnectSocket } from '../services/socketService';
+import { initSocket, joinDMRoom, sendDMMessage, onReceiveMessage, offReceiveMessage } from '../services/socketService';
 
 interface Friend {
   _id: string;
