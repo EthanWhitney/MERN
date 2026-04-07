@@ -168,9 +168,9 @@ export const useFriendsChat = () => {
 
       if (payload.message) {
         const newMessage = payload.message;
-        setMessages([...messages, newMessage]);
         
-        // Emit message via Socket.IO for real-time updates to recipient
+        // Emit message via Socket.IO - let the listener handle adding to state
+        // to avoid duplicate messages
         sendDMMessage(selectedFriend._id, newMessage);
         
         return true;
