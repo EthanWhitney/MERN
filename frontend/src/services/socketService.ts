@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 
 const getSocketUrl = () => {
   const isDev = window.location.hostname === 'localhost';
-  return isDev ? 'http://localhost:5000' : 'https://syncord.space';
+  return isDev ? 'http://localhost:5000' : window.location.origin;
 };
 
 export const initSocket = (userId: string) => {
