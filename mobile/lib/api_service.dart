@@ -19,24 +19,22 @@ class ApiService {
     }
   }
 
-  /// Handles user login by hitting the /api/auth/login endpoint defined in server.js
+  /// Handles user login
   static Future<Map<String, dynamic>> login(String login, String password) async {
     try {
-      // We use the /api/auth prefix to match your Express router: app.use('/api/auth', authRoutes)
       final url = Uri.parse('$baseUrl/api/auth/login');
       
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'emailOrUsername': login, // Matches your backend's expected key
+          'emailOrUsername': login,
           'password': password,
         }),
       ).timeout(const Duration(seconds: 10)); // Prevents the app from hanging forever if the bridge is down
 
       return jsonDecode(response.body);
     } catch (e) {
-      // Catching errors like SocketException (no internet) or Timeout
       return {
         'error': 'Connection failed',
         'details': e.toString(),
@@ -44,8 +42,45 @@ class ApiService {
     }
   }
 
-  /// Helper function to verify the connection to your server.js "ping" route.
-  /// You can call this in your main.dart to test the bridge.
+  /// Handles user register
+  Future<Map<String, dynamic>> register(String username, String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/register'), 
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'error': 'Connection failed'};
+    }
+  }
+
+
+  /// Verify Email Function
+  Future<Map<String, dynamic>> verifyEmail(String userId, String code) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/verify-email'), 
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId, 
+          'verificationCode': code,
+        }),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'error': 'Connection failed'};
+    }
+  }
+
+
+  /// Helper function to verify the connection to server.js "ping" route.
   static Future<void> testPing() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/api/ping'));
