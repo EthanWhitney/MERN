@@ -35,11 +35,12 @@ const register = async (req, res) => {
 
     const db = client.db('discord_clone');
 
-    // Check if user already exists in main users collection (case-insensitive username)
+    // Check if user already exists in main users collection (case-insensitive)
     const existingVerifiedUser = await db.collection('users').findOne({
       $or: [
         { email: email.toLowerCase() },
-        { username: username }      ]
+        { username: { $regex: `^${username}$`, $options: 'i' } }
+      ]
     });
 
     if (existingVerifiedUser && existingVerifiedUser.active) {
@@ -47,11 +48,12 @@ const register = async (req, res) => {
       return res.status(409).json({ userId: null, error });
     }
 
-    // Check if already pending verification (case-insensitive username)
+    // Check if already pending verification (case-insensitive)
     const existingUnverifiedUser = await db.collection('unverifiedUsers').findOne({
       $or: [
         { email: email.toLowerCase() },
-        { username: username }      ]
+        { username: { $regex: `^${username}$`, $options: 'i' } }
+      ]
     });
 
     if (existingUnverifiedUser) {
@@ -130,16 +132,31 @@ const login = async (req, res) => {
 
     const db = client.db('discord_clone');
 
-    // Find user by email or username
+    // Find user by email or username (case-insensitive for username)
     const user = await db.collection('users').findOne({
       $or: [
         { email: emailOrUsername },
-        { username: emailOrUsername }
+        { username: { $regex: `^${emailOrUsername}$`, $options: 'i' } }
       ]
     });
 
     if (!user) {
+      // Debug: Check if user exists in unverifiedUsers instead
+      const unverifiedUser = await db.collection('unverifiedUsers').findOne({
+        $or: [
+          { email: emailOrUsername },
+          { username: { $regex: `^${emailOrUsername}$`, $options: 'i' } }
+        ]
+      });
+      
+      if (unverifiedUser) {
+        error = 'Account exists but email is not verified. Please check your email for the verification code.';
+        console.log(`Login attempt for unverified user: ${emailOrUsername}`);
+        return res.status(401).json({ userId: null, username: '', error });
+      }
+      
       error = 'Invalid email/username or password';
+      console.log(`Login attempt: User not found - ${emailOrUsername}`);
       return res.status(401).json({ userId: null, username: '', error });
     }
 
@@ -148,6 +165,7 @@ const login = async (req, res) => {
 
     if (!passwordMatch) {
       error = 'Invalid email/username or password';
+      console.log(`Login attempt: Password mismatch for user - ${emailOrUsername}`);
       return res.status(401).json({ userId: null, username: '', error });
     }
 
@@ -169,6 +187,7 @@ const login = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
+    console.error('Login error:', error);
     return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
   }
 };
@@ -408,11 +427,86 @@ const resendVerificationCode = async (req, res) => {
   }
 };
 
+// Recover stuck account - move from unverified to verified without needing code
+const recoverAccount = async (req, res) => {
+  const { emailOrUsername } = req.body;
+  let error = '';
+
+  try {
+    if (!emailOrUsername) {
+      error = 'Email or username is required';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const searchString = emailOrUsername.trim().toLowerCase();
+    const db = client.db('discord_clone');
+
+    // Find unverified user (case-insensitive username search)
+    const unverifiedUser = await db.collection('unverifiedUsers').findOne({
+      $or: [
+        { email: searchString },
+        { username: { $regex: `^${searchString}$`, $options: 'i' } }
+      ]
+    });
+
+    if (!unverifiedUser) {
+      // Check if already verified (case-insensitive username search)
+      const verifiedUser = await db.collection('users').findOne({
+        $or: [
+          { email: searchString },
+          { username: { $regex: `^${searchString}$`, $options: 'i' } }
+        ]
+      });
+      
+      if (verifiedUser) {
+        error = 'Account is already verified. Try logging in.';
+        return res.status(400).json({ success: false, error });
+      }
+
+      error = 'No account found with that email or username';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // Move account from unverified to users collection
+    const newUser = {
+      email: unverifiedUser.email,
+      username: unverifiedUser.username,
+      hashedPassword: unverifiedUser.hashedPassword,
+      profilePicture: '',
+      servers: [],
+      friends: [],
+      friendRequests: [],
+      active: true,
+      createdAt: unverifiedUser.createdAt
+    };
+
+    const insertResult = await db.collection('users').insertOne(newUser);
+    const userId = insertResult.insertedId.toString();
+
+    // Delete from unverified collection
+    await db.collection('unverifiedUsers').deleteOne({ _id: unverifiedUser._id });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Account recovered successfully. You can now log in.',
+      userId: userId,
+      username: newUser.username,
+      error: ''
+    });
+  }
+  catch (e) {
+    error = e.toString();
+    console.error('Account recovery error:', error);
+    return res.status(500).json({ success: false, error });
+  }
+};
+
 module.exports = {
   register,
   login,
   getUserProfile,
   verifyEmail,
   resendVerificationCode,
-  refreshAccessToken
+  refreshAccessToken,
+  recoverAccount
 };

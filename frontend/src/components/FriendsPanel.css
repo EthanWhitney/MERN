@@ -118,6 +118,29 @@
   filter: brightness(1.04);
 }
 
+.friends-back-btn {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #9aa3b2;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.friends-back-btn:hover {
+  background: #2f3746;
+  color: #e6e9ee;
+}
+
 /* Controls and Search */
 .friends-controls {
   display: flex;
@@ -226,6 +249,10 @@
 .friend-actions {
   display: flex;
   gap: 8px;
+}
+
+.friend-request-card {
+  cursor: default;
 }
 
 .friends-icon {

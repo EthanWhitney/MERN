@@ -16,11 +16,12 @@ if (!client.topology || !client.topology.isConnected()) {
 
 // Update profile picture
 const updateProfilePicture = async (req, res) => {
-  const { userId, profilePicture } = req.body;
+  const userId = req.userId;
+  const { profilePicture } = req.body;
   let error = '';
 
-  if (!userId || !profilePicture) {
-    error = 'User ID and profile picture are required';
+  if (!profilePicture) {
+    error = 'Profile picture is required';
     return res.status(400).json({ success: false, error });
   }
 

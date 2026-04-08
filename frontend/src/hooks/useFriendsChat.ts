@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { authFetch } from '../utils/authFetch';
-import { initSocket, joinDMRoom, sendDMMessage, onReceiveMessage, offReceiveMessage } from '../services/socketService';
+import { 
+  initSocket, 
+  joinDMRoom, 
+  sendDMMessage, 
+  onReceiveMessage, 
+  offReceiveMessage,
+  onFriendRequestReceived,
+  offFriendRequestReceived,
+  onFriendRequestAccepted,
+  offFriendRequestAccepted,
+  onFriendRequestDeclined,
+  offFriendRequestDeclined
+} from '../services/socketService';
 
 interface Friend {
   _id: string;
@@ -20,6 +32,7 @@ export interface ChatMessage {
 
 export const useFriendsChat = (recipientId?: string) => {
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,10 +54,16 @@ export const useFriendsChat = (recipientId?: string) => {
   useEffect(() => {
     if (!userId) return;
 
-    initSocket(userId);
-    console.log('Socket.IO initialized for user:', userId);
+    console.log('[useFriendsChat] Initializing Socket.IO for user:', userId);
+    const sock = initSocket(userId);
+    
+    // Wait a bit for connection to establish, then log status
+    const checkConnection = setTimeout(() => {
+      console.log('[useFriendsChat] Socket connection status:', sock?.connected ? 'CONNECTED' : 'NOT YET CONNECTED');
+    }, 500);
 
     return () => {
+      clearTimeout(checkConnection);
       // Keep socket alive even when hook unmounts, only disconnect on complete logout
     };
   }, [userId]);
@@ -91,6 +110,127 @@ export const useFriendsChat = (recipientId?: string) => {
     };
 
     loadFriends();
+  }, [userId]);
+
+  // Load pending friend requests
+  useEffect(() => {
+    const loadPendingRequests = async () => {
+      if (!userId) {
+        return;
+      }
+
+      try {
+        const response = await authFetch(`api/users/friends/pending`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load pending requests (${response.status})`);
+        }
+
+        const payload = await response.json();
+        console.log('Pending requests:', payload.requests);
+        
+        setPendingRequests(payload.requests || []);
+      } catch (err: any) {
+        console.error('Error loading pending requests:', err);
+        // Don't set error state for pending requests, just log it
+      }
+    };
+
+    loadPendingRequests();
+  }, [userId]);
+
+  // Helper function to reload friends and pending requests
+  const reloadFriendsData = async () => {
+    try {
+      const friendsResponse = await authFetch(`api/users/friends`);
+      if (friendsResponse.ok) {
+        const payload = await friendsResponse.json();
+        setFriends(payload.friends || []);
+      }
+
+      const requestsResponse = await authFetch(`api/users/friends/pending`);
+      if (requestsResponse.ok) {
+        const payload = await requestsResponse.json();
+        setPendingRequests(payload.requests || []);
+      }
+    } catch (err) {
+      console.error('Error reloading friends data:', err);
+    }
+  };
+
+  // Listen for friend request received notifications
+  useEffect(() => {
+    if (!userId) {
+      console.log('[useFriendsChat] Skipping listener registration: no userId');
+      return;
+    }
+
+    const handleFriendRequestReceived = (data: any) => {
+      console.log('[useFriendsChat] 📬 Friend request received event triggered:', data);
+      reloadFriendsData();
+    };
+
+    // Register listener after socket has time to connect
+    const timeout = setTimeout(() => {
+      console.log('[useFriendsChat] Setting up onFriendRequestReceived listener');
+      onFriendRequestReceived(handleFriendRequestReceived);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      console.log('[useFriendsChat] Cleaning up onFriendRequestReceived listener');
+      offFriendRequestReceived(handleFriendRequestReceived);
+    };
+  }, [userId]);
+
+  // Listen for friend request accepted notifications
+  useEffect(() => {
+    if (!userId) {
+      console.log('[useFriendsChat] Skipping listener registration: no userId');
+      return;
+    }
+
+    const handleFriendRequestAccepted = (data: any) => {
+      console.log('[useFriendsChat] ✅ Friend request accepted event triggered:', data);
+      reloadFriendsData();
+    };
+
+    // Register listener after socket has time to connect
+    const timeout = setTimeout(() => {
+      console.log('[useFriendsChat] Setting up onFriendRequestAccepted listener');
+      onFriendRequestAccepted(handleFriendRequestAccepted);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      console.log('[useFriendsChat] Cleaning up onFriendRequestAccepted listener');
+      offFriendRequestAccepted(handleFriendRequestAccepted);
+    };
+  }, [userId]);
+
+  // Listen for friend request declined notifications
+  useEffect(() => {
+    if (!userId) {
+      console.log('[useFriendsChat] Skipping listener registration: no userId');
+      return;
+    }
+
+    const handleFriendRequestDeclined = (data: any) => {
+      console.log('[useFriendsChat] ❌ Friend request declined event triggered:', data);
+      reloadFriendsData();
+    };
+
+    // Register listener after socket has time to connect
+    const timeout = setTimeout(() => {
+      console.log('[useFriendsChat] Setting up onFriendRequestDeclined listener');
+      onFriendRequestDeclined(handleFriendRequestDeclined);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeout);
+      console.log('[useFriendsChat] Cleaning up onFriendRequestDeclined listener');
+      offFriendRequestDeclined(handleFriendRequestDeclined);
+    };
   }, [userId]);
 
   // Load messages when friend is selected and set up real-time listener
@@ -248,6 +388,64 @@ export const useFriendsChat = (recipientId?: string) => {
     }
   };
 
+  // Accept friend request
+  const acceptFriendRequest = async (friendId: string): Promise<boolean> => {
+    try {
+      const response = await authFetch(
+        `api/users/friends/${friendId}/accept`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        const errorPayload = await response.json();
+        throw new Error(errorPayload.error || 'Failed to accept friend request');
+      }
+
+      // Remove from pending requests
+      setPendingRequests(prev => prev.filter(req => req._id !== friendId));
+      
+      // Reload friends list
+      const friendsResponse = await authFetch(`api/users/friends`);
+      if (friendsResponse.ok) {
+        const payload = await friendsResponse.json();
+        setFriends(payload.friends || []);
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Error accepting friend request:', err);
+      return false;
+    }
+  };
+
+  // Decline friend request
+  const declineFriendRequest = async (friendId: string): Promise<boolean> => {
+    try {
+      const response = await authFetch(
+        `api/users/friends/${friendId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (!response.ok) {
+        const errorPayload = await response.json();
+        throw new Error(errorPayload.error || 'Failed to decline friend request');
+      }
+
+      // Remove from pending requests
+      setPendingRequests(prev => prev.filter(req => req._id !== friendId));
+
+      return true;
+    } catch (err: any) {
+      console.error('Error declining friend request:', err);
+      return false;
+    }
+  };
+
   // Edit message
   const editMessage = async (messageId: string, newContent: string): Promise<boolean> => {
     const targetId = recipientId || selectedFriend?._id;
@@ -329,6 +527,7 @@ export const useFriendsChat = (recipientId?: string) => {
   return {
     userId,
     friends,
+    pendingRequests,
     selectedFriend,
     setSelectedFriend,
     messages,
@@ -337,6 +536,8 @@ export const useFriendsChat = (recipientId?: string) => {
     isSending,
     sendMessage,
     addFriend,
+    acceptFriendRequest,
+    declineFriendRequest,
     editMessage,
     deleteMessage,
   };

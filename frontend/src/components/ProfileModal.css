@@ -1,0 +1,244 @@
+/* Profile Modal Overlay */
+.profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+/* Profile Modal */
+.profile-modal {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: #2f3848;
+  border: 1px solid #3b4558;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  min-width: 300px;
+  max-width: 500px;
+  animation: profile-modal-slide-in 200ms ease-out;
+}
+
+@keyframes profile-modal-slide-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Header */
+.profile-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #3b4558;
+  gap: 16px;
+}
+
+.profile-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e6e9ee;
+}
+
+.profile-modal-close {
+  background: none;
+  border: none;
+  color: #9aa3b2;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 200ms ease;
+}
+
+.profile-modal-close:hover {
+  color: #e6e9ee;
+}
+
+/* Content */
+.profile-modal-content {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Avatars Grid */
+.avatars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.avatar-option {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: #242c3a;
+  border: 2px solid #3b4558;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-option:hover {
+  border-color: #5865f2;
+  background: #2a3344;
+  transform: translateY(-2px);
+}
+
+.avatar-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-option.selected {
+  border-color: #5865f2;
+  background: #5865f2;
+  box-shadow: 0 0 12px rgba(88, 101, 242, 0.3);
+}
+
+.avatar-checkmark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: #5865f2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Error and Success Messages */
+.profile-modal-error {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(240, 71, 71, 0.1);
+  border: 1px solid #f04747;
+  color: #f04747;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.profile-modal-success {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(67, 181, 129, 0.1);
+  border: 1px solid #43b581;
+  color: #43b581;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Footer */
+.profile-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #3b4558;
+  justify-content: flex-end;
+}
+
+/* Buttons */
+.profile-modal-cancel,
+.profile-modal-save {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 200ms ease;
+}
+
+.profile-modal-cancel {
+  background: transparent;
+  color: #9aa3b2;
+  border: 1px solid #3b4558;
+}
+
+.profile-modal-cancel:hover:not(:disabled) {
+  background: #3b4558;
+  color: #e6e9ee;
+}
+
+.profile-modal-save {
+  background: #5865f2;
+  color: #f6f7ff;
+}
+
+.profile-modal-save:hover:not(:disabled) {
+  background: #4752c4;
+  transform: translateY(-1px);
+}
+
+.profile-modal-save:disabled,
+.profile-modal-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+.profile-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.profile-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-modal-content::-webkit-scrollbar-thumb {
+  background: #3b4558;
+  border-radius: 4px;
+}
+
+.profile-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #5865f2;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .profile-modal {
+    max-width: 90vw;
+  }
+
+  .avatars-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+  }
+
+  .profile-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .profile-modal-footer button {
+    width: 100%;
+  }
+}
