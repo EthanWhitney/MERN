@@ -8,6 +8,8 @@ import {
   updateThreadMessage,
 } from '../services/chatApi';
 import type { ChatMessage, Thread } from '../types/chat';
+import { authFetch } from '../utils/authFetch';
+import { toMessage } from '../utils/chatAdapter';
 
 export const useChatThread = (serverId?: string, channelId?: string, recieverId?: string) => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -15,6 +17,9 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [oldestMessageTime, setOldestMessageTime] = useState<string | null>(null);
+  const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -28,6 +33,13 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
           const data = await getServerThreadMessages(serverId, channelId);
           setActiveThread(data.thread);
           setMessages(data.messages);
+          if (data.messages.length > 0) {
+            setOldestMessageTime(data.messages[0].createdAt || null);
+            setAllMessagesLoaded(data.messages.length < 50);
+          } else {
+            setOldestMessageTime(null);
+            setAllMessagesLoaded(true);
+          }
           setThreads((prev) => {
             const exists = prev.some((t) => t.id === data.thread.id);
             return exists ? prev : [data.thread, ...prev];
@@ -39,6 +51,13 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
           const data = await getDmThreadMessages(recieverId);
           setActiveThread(data.thread);
           setMessages(data.messages);
+          if (data.messages.length > 0) {
+            setOldestMessageTime(data.messages[0].createdAt || null);
+            setAllMessagesLoaded(data.messages.length < 50);
+          } else {
+            setOldestMessageTime(null);
+            setAllMessagesLoaded(true);
+          }
           setThreads((prev) => {
             const exists = prev.some((t) => t.id === data.thread.id);
             return exists ? prev : [data.thread, ...prev];
@@ -52,12 +71,23 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
           if (first.recieverId) {
             const data = await getDmThreadMessages(first.recieverId);
             setMessages(data.messages);
+            if (data.messages.length > 0) {
+              setOldestMessageTime(data.messages[0].createdAt || null);
+              setAllMessagesLoaded(data.messages.length < 50);
+            } else {
+              setOldestMessageTime(null);
+              setAllMessagesLoaded(true);
+            }
           } else {
             setMessages([]);
+            setOldestMessageTime(null);
+            setAllMessagesLoaded(true);
           }
         } else {
           setActiveThread(null);
           setMessages([]);
+          setOldestMessageTime(null);
+          setAllMessagesLoaded(true);
         }
       } catch (e: any) {
         setError(e.message || 'Failed to load chat');
@@ -114,10 +144,58 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
     messages,
     loading,
     error,
+    isLoadingMore,
+    allMessagesLoaded,
     setActiveThread,
     setMessages,
     sendMessage,
     editMessage,
     removeMessage,
+    loadMoreMessages: async () => {
+      if (!activeThread || messages.length === 0 || !oldestMessageTime) return;
+
+      setIsLoadingMore(true);
+      try {
+        if (activeThread.kind === 'server' && activeThread.serverId && activeThread.channelId) {
+          const response = await authFetch(
+            `api/servers/${activeThread.serverId}/textChannels/${activeThread.channelId}/messages?before=${encodeURIComponent(oldestMessageTime)}`
+          );
+          const data = await response.json();
+          if (!response.ok || data.error) {
+            throw new Error(data.error || 'Failed to load more messages');
+          }
+          const newMessages = (data.messages || []).map((msg: any) => toMessage(msg, activeThread.id));
+          if (newMessages.length > 0) {
+            setMessages(prevMessages => [...newMessages, ...prevMessages]);
+            const newOldest = newMessages[0];
+            setOldestMessageTime(newOldest.createdAt || null);
+            if (newMessages.length < 50) {
+              setAllMessagesLoaded(true);
+            }
+          }
+        } else if (activeThread.kind === 'dm' && activeThread.recieverId) {
+          const response = await authFetch(
+            `api/chat/dms/${activeThread.recieverId}/messages?before=${encodeURIComponent(oldestMessageTime)}`
+          );
+          const data = await response.json();
+          if (!response.ok || data.error) {
+            throw new Error(data.error || 'Failed to load more messages');
+          }
+          const newMessages = (data.messages || []).map((msg: any) => toMessage(msg, activeThread.id));
+          if (newMessages.length > 0) {
+            setMessages(prevMessages => [...newMessages, ...prevMessages]);
+            const newOldest = newMessages[0];
+            setOldestMessageTime(newOldest.createdAt || null);
+            if (newMessages.length < 50) {
+              setAllMessagesLoaded(true);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('Error loading more messages:', err);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    },
   };
 };

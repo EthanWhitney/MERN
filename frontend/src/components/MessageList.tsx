@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { ChatMessage } from '../types/chat';
 
 type MessageListProps = {
@@ -6,6 +6,9 @@ type MessageListProps = {
   messages: ChatMessage[];
   onEditMessage: (messageId: string, content: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => Promise<void>;
+  allMessagesLoaded?: boolean;
 };
 
 type MenuState = {
@@ -21,10 +24,15 @@ type EditingState = {
 
 const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
 
-function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage }: MessageListProps) {
+function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, isLoadingMore = false, onLoadMore, allMessagesLoaded = false }: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [submittingMessageId, setSubmittingMessageId] = useState('');
   const [editing, setEditing] = useState<EditingState | null>(null);
+  const [showTopPopup, setShowTopPopup] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const prevScrollHeightRef = useRef<number>(0);
+  const shouldPreserveScrollRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!menu) {
@@ -46,6 +54,41 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage }
       window.removeEventListener('keydown', closeOnEscape);
     };
   }, [menu]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      setHasScrolled(true);
+      setShowTopPopup(el.scrollTop === 0);
+    };
+
+    el.addEventListener('scroll', handleScroll);
+    handleScroll(); // initialize
+
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Track scroll position when loading more messages to restore it after render
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    // When starting to load more messages, save scroll height
+    if (isLoadingMore && !shouldPreserveScrollRef.current) {
+      prevScrollHeightRef.current = el.scrollHeight;
+      shouldPreserveScrollRef.current = true;
+      return;
+    }
+
+    // After loading more messages, restore scroll position
+    if (!isLoadingMore && shouldPreserveScrollRef.current) {
+      const heightDifference = el.scrollHeight - prevScrollHeightRef.current;
+      el.scrollTop += heightDifference;
+      shouldPreserveScrollRef.current = false;
+    }
+  }, [isLoadingMore]);
 
   const getAvatarSrc = (profilePicture?: string): string => {
     if (!profilePicture) {
@@ -178,7 +221,18 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage }
   const selectedMessage = menu ? messages.find((message) => message.id === menu.messageId) : null;
 
   return (
-    <div className="message-list">
+    <div className="message-list-wrapper">
+      {hasScrolled && showTopPopup && !allMessagesLoaded && (
+        <div 
+          className="top-popup"
+          onClick={onLoadMore}
+          style={{ cursor: isLoadingMore ? 'not-allowed' : 'pointer' }}
+        >
+          {isLoadingMore ? 'Loading...' : 'Load More'}
+        </div>
+      )}
+
+      <div ref={containerRef} className="message-list">
       {messages.length === 0 && <p className="muted message-empty">No messages yet</p>}
       {messages.map((message, index) => {
         const previousMessage = index > 0 ? messages[index - 1] : null;
@@ -297,6 +351,7 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage }
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }
