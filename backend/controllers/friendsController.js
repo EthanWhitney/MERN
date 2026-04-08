@@ -7,62 +7,78 @@ if (!client.topology || !client.topology.isConnected()) {
   client.connect();
 }
 
-// add friend 
+// send friend req
 // POST /api/users/friends/:friendId
-const addFriend = async (req, res) => {
-  const userId = req.userId;
+const sendFriendRequest = async (req, res) => {
+  const senderId = req.userId;
   const { friendId } = req.params;
-  let error = '';
 
   try {
-    if (!userId || !ObjectId.isValid(userId) || !ObjectId.isValid(friendId)) {
-      error = 'Invalid user ID(s)';
-      return res.status(400).json({ friends: [], error });
+    if (!ObjectId.isValid(friendId)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const db = client.db('discord_clone');
+    const senderObjId = new ObjectId(senderId);
+    const friendObjId = new ObjectId(friendId);
+
+    if (senderId === friendId) return res.status(400).json({ error: "Can't add yourself" });
+
+    // fetch both users to check current status
+    const [sender, recipient] = await Promise.all([
+      db.collection('users').findOne({ _id: senderObjId }),
+      db.collection('users').findOne({ _id: friendObjId })
+    ]);
+
+    if (!recipient) return res.status(404).json({ error: 'User not found' });
+
+    // are they already friends?
+    const alreadyFriends = sender.friends?.some(id => id.equals(friendObjId));
+    if (alreadyFriends) return res.status(400).json({ error: 'Already friends' });
+
+    const hasIncomingFromThem = sender.friendRequests?.some(req => req.from.equals(friendObjId));
+    
+    if (hasIncomingFromThem) {
+        await acceptFriendRequest(req, res); 
+        return; 
     }
 
-    if (userId === friendId) {
-      error = 'Cannot add yourself as a friend';
-      return res.status(400).json({ friends: [], error });
-    }
+    const alreadySent = recipient.friendRequests?.some(req => req.from.equals(senderObjId));
+    if (alreadySent) return res.status(400).json({ error: 'Request already pending' });
 
+    // push the request
+    await db.collection('users').updateOne(
+      { _id: friendObjId },
+      { $addToSet: { friendRequests: { from: senderObjId, status: 'pending' } } }
+    );
+
+    return res.status(200).json({ message: 'Request sent!' });
+  } catch (e) {
+    return res.status(500).json({ error: e.toString() });
+  }
+};
+
+const acceptFriendRequest = async (req, res) => {
+  const userId = req.userId;
+  const { friendId } = req.params;
+
+  try {
     const db = client.db('discord_clone');
     const userObjId = new ObjectId(userId);
     const friendObjId = new ObjectId(friendId);
 
-    const [user, friend] = await Promise.all([
-      db.collection('users').findOne({ _id: userObjId }),
-      db.collection('users').findOne({ _id: friendObjId }),
-    ]);
-
-    if (!user || !friend) {
-      error = 'User not found';
-      return res.status(404).json({ friends: [], error });
-    }
-
-    const alreadyFriends = (user.friends || []).some(id => id.toString() === friendId);
-    if (alreadyFriends) {
-      error = 'Already friends';
-      return res.status(409).json({ friends: [], error });
-    }
-
-    // add each user to the others friends list
+    // update both users: add to friends, rem from pending
     await Promise.all([
-      db.collection('users').updateOne({ _id: userObjId }, { $addToSet: { friends: friendObjId } }),
-      db.collection('users').updateOne({ _id: friendObjId }, { $addToSet: { friends: userObjId } }),
+      db.collection('users').updateOne({ _id: userObjId }, { 
+        $addToSet: { friends: friendObjId },
+        $pull: { friendRequests: { from: friendObjId } } 
+      }),
+      db.collection('users').updateOne({ _id: friendObjId }, { 
+        $addToSet: { friends: userObjId } 
+      })
     ]);
 
-    const updatedUser = await db.collection('users').findOne({ _id: userObjId });
-    const friendIds = updatedUser.friends || [];
-    const friendProfiles = await db
-      .collection('users')
-      .find({ _id: { $in: friendIds } })
-      .project({ _id: 1, username: 1, profilePicture: 1 })
-      .toArray();
-
-    return res.status(200).json({ friends: friendProfiles, error: '' });
+    return res.status(200).json({ message: 'Friend request accepted!' });
   } catch (e) {
-    error = e.toString();
-    return res.status(500).json({ friends: [], error });
+    return res.status(500).json({ error: e.toString() });
   }
 };
 
@@ -91,8 +107,12 @@ const removeFriend = async (req, res) => {
 
     // remove each user from the others friends list
     await Promise.all([
-      db.collection('users').updateOne({ _id: userObjId }, { $pull: { friends: friendObjId } }),
-      db.collection('users').updateOne({ _id: friendObjId }, { $pull: { friends: userObjId } }),
+      db.collection('users').updateOne({ _id: userObjId }, { 
+        $pull: { friends: friendObjId, friendRequests: { from: friendObjId } } 
+      }),
+      db.collection('users').updateOne({ _id: friendObjId }, { 
+        $pull: { friends: userObjId, friendRequests: { from: userObjId } } 
+      })
     ]);
 
     const updatedUser = await db.collection('users').findOne({ _id: userObjId });
@@ -164,9 +184,11 @@ const searchUserByUsername = async (req, res) => {
     }
 
     const db = client.db('discord_clone');
-    // Use case-insensitive regex to find user by username
+
+    const searchName = username.trim().toLowerCase();
+
     const user = await db.collection('users').findOne({
-      username: { $regex: '^' + username.trim() + '$', $options: 'i' }
+      username: searchName
     });
 
     if (!user) {
@@ -188,4 +210,35 @@ const searchUserByUsername = async (req, res) => {
   }
 };
 
-module.exports = { addFriend, removeFriend, getFriends, searchUserByUsername };
+const getPendingRequests = async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    const db = client.db('discord_clone');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+
+    if (!user || !user.friendRequests) {
+      return res.status(200).json({ requests: [] });
+    }
+
+    // get the profiles for everyone who sent a request
+    const requesterIds = user.friendRequests.map(r => r.from);
+    const profiles = await db.collection('users')
+      .find({ _id: { $in: requesterIds } })
+      .project({ username: 1, profilePicture: 1 })
+      .toArray();
+
+    return res.status(200).json({ requests: profiles });
+  } catch (e) {
+    return res.status(500).json({ error: e.toString() });
+  }
+};
+
+module.exports = { 
+  sendFriendRequest, 
+  acceptFriendRequest, 
+  removeFriend, 
+  getFriends, 
+  searchUserByUsername,
+  getPendingRequests
+};
