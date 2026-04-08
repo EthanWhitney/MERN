@@ -51,43 +51,62 @@ class _RegisterPageState extends State<RegisterPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2F33), // Syncord Dark
-        title: const Text("Verify Email", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF2B2D31),
+        surfaceTintColor: Colors.transparent,
         content: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min, 
           children: [
             const Text(
+              "Verify Email",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 16),
+            const Text(
               "Enter the 6-digit code sent to your email.",
-              style: TextStyle(color: Colors.white70),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFB5BAC1), fontSize: 14),
             ),
             const SizedBox(height: 20),
             TextField(
-              controller: _codeController, 
+              controller: _codeController,
               keyboardType: TextInputType.number,
-              maxLength: 6,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: "123456",
-                hintStyle: TextStyle(color: Colors.white24),
-                enabledBorder: UnderlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white54),
-                ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 4),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF1E1F22),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
               ),
+            ),
+            // Resend Button
+            TextButton(
+              onPressed: _resendCode,
+              child: const Text("Didn't get a code? Resend here.", style: TextStyle(color: Color(0xFF5865F2), fontSize: 12)),
+            ),
+            
+            const SizedBox(height: 8), // Gap between Resend and Buttons
+
+            // Row of buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.white70)),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  onPressed: () => _verifyCode(_codeController.text),
+                  child: const Text("Verify", style: TextStyle(color: Colors.white)),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: Colors.redAccent)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5865F2)),
-            onPressed: () => _verifyCode(_codeController.text),
-            child: const Text("Verify", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      )
     );
   }
 
@@ -111,6 +130,25 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     }
   }
+
+  void _resendCode() async {
+  // We use the _pendingUserId we saved during the initial register call
+  if (_pendingUserId == null) return;
+
+  final result = await ApiService.resendVerificationCode(_pendingUserId!);
+
+  if (!mounted) return;
+
+  if (result.containsKey('ERROR_KEY')) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result['ERROR_KEY']), backgroundColor: Colors.red),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("A new code has been sent to your email!")),
+    );
+  }
+}
 
 
   @override
@@ -185,9 +223,7 @@ class _RegisterPageState extends State<RegisterPage> {
           keyboardType: kType ?? TextInputType.text,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            fillColor: const Color(0xFF1F2937),
             filled: true,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
           ),
         ),
       ],

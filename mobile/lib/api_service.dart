@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
+  static final http.Client _client = http.Client(); /// Create client
+
   /// Automatically determines the backend URL based on the platform.
   static String get baseUrl {
     if (kIsWeb) {
@@ -24,7 +26,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/auth/login');
       
-      final response = await http.post(
+      final response = await _client.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -45,7 +47,7 @@ class ApiService {
   /// Handles user register
   Future<Map<String, dynamic>> register(String username, String email, String password) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/api/auth/register'), 
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -65,7 +67,7 @@ class ApiService {
   /// Verify Email Function
   Future<Map<String, dynamic>> verifyEmail(String userId, String code) async {
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse('$baseUrl/api/auth/verify-email'), 
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -79,11 +81,28 @@ class ApiService {
     }
   }
 
+  /// Resend Email Verification
+  static Future<Map<String, dynamic>> resendVerificationCode(String userId) async {
+    try {
+      final response = await _client.post(
+        Uri.parse('$baseUrl/api/auth/resend-code'), 
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId, 
+        }),
+      );
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'error': 'CONNECTION_FAILED_MESSAGE'};
+    }
+  }
+
 
   /// Helper function to verify the connection to server.js "ping" route.
   static Future<void> testPing() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/ping'));
+      final response = await _client.get(Uri.parse('$baseUrl/api/ping'));
       debugPrint("Ping Response: ${response.body}");
     } catch (e) {
       debugPrint("Ping failed. Check your adb reverse bridge or server status: $e");
