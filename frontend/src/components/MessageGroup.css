@@ -1,0 +1,275 @@
+/* Message Group Container */
+.message-group {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+/* Avatar */
+.message-group-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: #3c4658;
+  display: grid;
+  place-items: center;
+  color: #dbe2ea;
+  font-weight: 600;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.message-group-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Messages Container with indentation */
+.message-group-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Individual Message */
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.message.message-sent {
+  align-items: flex-start;
+}
+
+.message.message-received {
+  align-items: flex-start;
+}
+
+/* Message Header (Username and Time) */
+.message-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.message-username {
+  font-weight: 600;
+  color: #dbe2ea;
+  font-size: 0.9rem;
+}
+
+.message-time {
+  font-size: 0.75rem;
+  color: #9aa3b2;
+}
+
+/* Message Content */
+.message-content {
+  color: #e6e9ee;
+  font-size: 0.95rem;
+  word-wrap: break-word;
+  max-width: 100%;
+  line-height: 1.4;
+}
+
+.message-edited {
+  font-size: 0.75rem;
+  color: #9aa3b2;
+  margin-left: 6px;
+  font-style: italic;
+}
+
+/* Message Edit Mode */
+.message-edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.message-edit-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2f3746;
+  background: #2a3140;
+  color: #e6e9ee;
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.95rem;
+  resize: none;
+  max-height: 150px;
+}
+
+.message-edit-input:focus {
+  outline: none;
+  border-color: #5865f2;
+}
+
+.message-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.message-edit-save,
+.message-edit-cancel {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.message-edit-save {
+  background: #5865f2;
+  color: #f6f7ff;
+}
+
+.message-edit-save:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.message-edit-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.message-edit-cancel {
+  background: #3c4658;
+  color: #e6e9ee;
+}
+
+.message-edit-cancel:hover:not(:disabled) {
+  background: #454f66;
+}
+
+.message-edit-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Context Menu */
+.message-context-menu {
+  display: flex;
+  flex-direction: column;
+  background: #222a37;
+  border: 1px solid #2f3746;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  min-width: 120px;
+}
+
+.context-menu-item {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: #e6e9ee;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 100ms ease;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background: #2f3848;
+}
+
+.context-menu-item:first-child {
+  border-radius: 7px 7px 0 0;
+}
+
+.context-menu-item:last-child {
+  border-radius: 0 0 7px 7px;
+}
+
+.context-menu-item.context-menu-delete {
+  color: #f04747;
+}
+
+.context-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Confirmation Dialog */
+.confirmation-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 2000;
+}
+
+.confirmation-dialog {
+  background: #222a37;
+  border: 1px solid #2f3746;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+}
+
+.confirmation-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #dbe2ea;
+}
+
+.confirmation-message {
+  margin: 0 0 20px;
+  color: #9aa3b2;
+  font-size: 0.95rem;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirmation-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 150ms ease;
+}
+
+.confirmation-confirm {
+  background: #5865f2;
+  color: #f6f7ff;
+}
+
+.confirmation-confirm:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.confirmation-cancel {
+  background: #3c4658;
+  color: #e6e9ee;
+}
+
+.confirmation-cancel:hover:not(:disabled) {
+  background: #454f66;
+}
+
+.confirmation-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
