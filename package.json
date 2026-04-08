@@ -5,5 +5,8 @@
     "dev": "npm --prefix backend run dev",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
   }
 }

@@ -21,7 +21,8 @@ if (!client.topology || !client.topology.isConnected()) {
 
 // Register a new user - creates unverified account
 const register = async (req, res) => {
-  const { username, password, email } = req.body;
+  const { password, email } = req.body;
+  const username = req.body.username ? req.body.username.trim().toLowerCase() : '';
   let error = '';
   let userId = null;
 
@@ -38,8 +39,7 @@ const register = async (req, res) => {
     const existingVerifiedUser = await db.collection('users').findOne({
       $or: [
         { email: email.toLowerCase() },
-        { username: { $regex: '^' + username.trim() + '$', $options: 'i' } }
-      ]
+        { username: username }      ]
     });
 
     if (existingVerifiedUser && existingVerifiedUser.active) {
@@ -51,8 +51,7 @@ const register = async (req, res) => {
     const existingUnverifiedUser = await db.collection('unverifiedUsers').findOne({
       $or: [
         { email: email.toLowerCase() },
-        { username: { $regex: '^' + username.trim() + '$', $options: 'i' } }
-      ]
+        { username: username }      ]
     });
 
     if (existingUnverifiedUser) {
@@ -118,7 +117,8 @@ const register = async (req, res) => {
 
 // Login user
 const login = async (req, res) => {
-  const { emailOrUsername, password } = req.body;
+  const { password } = req.body;
+  const emailOrUsername = req.body.emailOrUsername ? req.body.emailOrUsername.trim().toLowerCase() : '';
   let error = '';
 
   try {
@@ -133,7 +133,7 @@ const login = async (req, res) => {
     // Find user by email or username
     const user = await db.collection('users').findOne({
       $or: [
-        { email: emailOrUsername.toLowerCase() },
+        { email: emailOrUsername },
         { username: emailOrUsername }
       ]
     });
