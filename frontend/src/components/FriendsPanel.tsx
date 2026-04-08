@@ -1,0 +1,120 @@
+import { useState } from 'react';
+import './FriendsPanel.css';
+import { useFriendsChat } from '../hooks/useFriendsChat';
+import AddFriendModal from './AddFriendModal';
+
+interface Friend {
+  _id: string;
+  username: string;
+  profilePicture?: string;
+}
+
+interface FriendsPanelProps {
+  selectedFriend: Friend | null;
+  onSelectFriend: (friend: Friend) => void;
+}
+
+const FriendsPanel = ({ selectedFriend, onSelectFriend }: FriendsPanelProps) => {
+  const {
+    friends,
+    loading,
+    error,
+    addFriend,
+  } = useFriendsChat();
+
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [isAddingFriend, setIsAddingFriend] = useState(false);
+
+  const handleAddFriend = async (username: string): Promise<boolean> => {
+    setIsAddingFriend(true);
+    try {
+      await addFriend(username);
+      return true;
+    } catch (err) {
+      throw err;
+    } finally {
+      setIsAddingFriend(false);
+    }
+  };
+
+  return (
+    <div className="friends-panel">
+      <header className="friends-topbar">
+        <div className="friends-topbar-left">
+          <div className="friends-topbar-title">
+            <span className="friends-title-icon" aria-hidden="true">
+              F
+            </span>
+            <span className="friends-title-text">Friends</span>
+          </div>
+          <span className="friends-topbar-sep" aria-hidden="true">
+            •
+          </span>
+          <nav className="friends-topbar-tabs" aria-label="Friends tabs">
+            <button className="friends-tab friends-tab-active" type="button">
+              Online
+            </button>
+            <button className="friends-tab" type="button">
+              All
+            </button>
+          </nav>
+        </div>
+        <button className="friends-addfriend" type="button" onClick={() => setShowAddFriendModal(true)}>
+          Add Friend
+        </button>
+      </header>
+
+      <section className="friends-controls">
+        <input
+          className="friends-search"
+          placeholder="Search friends"
+          aria-label="Search friends"
+        />
+      </section>
+
+      <section className="friends-list" aria-label="Friends list">
+        {loading && <div className="friends-empty">Loading friends...</div>}
+        {!loading && error && (
+          <div className="friends-empty">{error}</div>
+        )}
+        {!loading && !error && friends.length === 0 && (
+          <div className="friends-empty">
+            <p>No friends yet.</p>
+            <span>Once you add friends, they will show up here.</span>
+          </div>
+        )}
+        {!loading && !error &&
+          friends.map((friend) => (
+            <article
+              className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
+              key={friend._id}
+              onClick={() => onSelectFriend(friend)}
+            >
+              <div className="friend-avatar">
+                {friend.profilePicture ? (
+                  <img src={friend.profilePicture} alt={friend.username} />
+                ) : (
+                  <span>{(friend.username || '?')[0]}</span>
+                )}
+              </div>
+              <div className="friend-meta">
+                <h2>{friend.username || 'Unknown user'}</h2>
+                <p>Available</p>
+              </div>
+            </article>
+          ))}
+      </section>
+
+      {showAddFriendModal && (
+        <AddFriendModal
+          isOpen={showAddFriendModal}
+          onClose={() => setShowAddFriendModal(false)}
+          onAddFriend={handleAddFriend}
+          isLoading={isAddingFriend}
+        />
+      )}
+    </div>
+  );
+};
+
+export default FriendsPanel;

@@ -18,7 +18,7 @@ export interface ChatMessage {
   editedAt?: string;
 }
 
-export const useFriendsChat = () => {
+export const useFriendsChat = (recipientId?: string) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -94,16 +94,22 @@ export const useFriendsChat = () => {
   }, [userId]);
 
   // Load messages when friend is selected and set up real-time listener
+  // Uses recipientId param if provided, otherwise uses selectedFriend state
   useEffect(() => {
     const loadMessages = async () => {
-      if (!selectedFriend || !userId) {
+      const targetId = recipientId || selectedFriend?._id;
+      
+      if (!targetId || !userId) {
         setMessages([]);
         return;
       }
 
       try {
+        setLoading(true);
+        setError('');
+        
         const response = await authFetch(
-          `api/chat/dms/${selectedFriend._id}/messages?limit=50`
+          `api/chat/dms/${targetId}/messages?limit=50`
         );
 
         if (!response.ok) {
@@ -118,15 +124,18 @@ export const useFriendsChat = () => {
         setMessages(payload.messages || []);
 
         // Join the DM room for real-time updates
-        joinDMRoom(selectedFriend._id);
+        joinDMRoom(targetId);
       } catch (err: any) {
         console.error('Error loading messages:', err);
+        setError('Failed to load messages');
         setMessages([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadMessages();
-  }, [selectedFriend, userId]);
+  }, [recipientId || selectedFriend?._id, userId]);
 
   // Listen for incoming real-time messages
   useEffect(() => {
@@ -144,12 +153,14 @@ export const useFriendsChat = () => {
 
   // Send message
   const sendMessage = async (messageInput: string): Promise<boolean> => {
-    if (!messageInput.trim() || !selectedFriend || !userId) return false;
+    const targetId = recipientId || selectedFriend?._id;
+    
+    if (!messageInput.trim() || !targetId || !userId) return false;
 
     setIsSending(true);
     try {
       const response = await authFetch(
-        `api/chat/dms/${selectedFriend._id}/messages`,
+        `api/chat/dms/${targetId}/messages`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -171,7 +182,7 @@ export const useFriendsChat = () => {
         
         // Emit message via Socket.IO - let the listener handle adding to state
         // to avoid duplicate messages
-        sendDMMessage(selectedFriend._id, newMessage);
+        sendDMMessage(targetId, newMessage);
         
         return true;
       }
@@ -239,13 +250,15 @@ export const useFriendsChat = () => {
 
   // Edit message
   const editMessage = async (messageId: string, newContent: string): Promise<boolean> => {
-    if (!newContent.trim() || !selectedFriend || !userId) {
-      console.error('Edit validation failed:', { messageId, newContent: newContent.trim(), selectedFriend, userId });
+    const targetId = recipientId || selectedFriend?._id;
+    
+    if (!newContent.trim() || !targetId || !userId) {
+      console.error('Edit validation failed:', { messageId, newContent: newContent.trim(), targetId, userId });
       return false;
     }
 
     try {
-      const endpoint = `api/chat/dms/${selectedFriend._id}/messages/${messageId}`;
+      const endpoint = `api/chat/dms/${targetId}/messages/${messageId}`;
       console.log('Editing message:', { endpoint, newContent });
       
       const response = await authFetch(endpoint, {
@@ -282,13 +295,15 @@ export const useFriendsChat = () => {
 
   // Delete message
   const deleteMessage = async (messageId: string): Promise<boolean> => {
-    if (!selectedFriend || !userId) {
-      console.error('Delete validation failed:', { messageId, selectedFriend, userId });
+    const targetId = recipientId || selectedFriend?._id;
+    
+    if (!targetId || !userId) {
+      console.error('Delete validation failed:', { messageId, targetId, userId });
       return false;
     }
 
     try {
-      const endpoint = `api/chat/dms/${selectedFriend._id}/messages/${messageId}`;
+      const endpoint = `api/chat/dms/${targetId}/messages/${messageId}`;
       console.log('Deleting message:', { endpoint });
       
       const response = await authFetch(endpoint, {

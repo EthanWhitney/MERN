@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import './MessageGroup.css';
 import type { ChatMessage } from '../hooks/useFriendsChat';
 
 interface MessageGroupProps {
@@ -143,7 +144,7 @@ const MessageGroup: React.FC<MessageGroupProps> = ({
 
   return (
     <div className={`message-group ${isOwn ? 'message-group-own' : 'message-group-other'}`} ref={containerRef}>
-      {/* Avatar */}
+      {/* Avatar - show for all messages */}
       <div className="message-group-avatar">
         {senderAvatar ? (
           <img src={senderAvatar} alt={senderUsername} />
