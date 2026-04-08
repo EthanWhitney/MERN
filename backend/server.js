@@ -120,9 +120,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// Export io instance and userSockets mapping for use in controllers
-socketManager.setSocketIO(io, userSockets);
+// httpServer.listen(5000); // start HTTP server with Socket.IO on port 5000
 
-module.exports = { httpServer, io, userSockets };
+// Connect on port 5000, check for all ports (Allows Mobile Development)
+const PORT = process.env.PORT || 5000;
 
-httpServer.listen(5000); // start HTTP server with Socket.IO on port 5000
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
+})
