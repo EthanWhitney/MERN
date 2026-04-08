@@ -13,9 +13,10 @@ interface Friend {
 interface FriendsChatProps {
   selectedFriend: Friend | null;
   currentUserId: string;
+  activeTab: 'online' | 'all' | 'requests';
 }
 
-const FriendsChat = ({ selectedFriend, currentUserId }: FriendsChatProps) => {
+const FriendsChat = ({ selectedFriend, currentUserId, activeTab }: FriendsChatProps) => {
   const {
     messages,
     loading,
@@ -24,6 +25,9 @@ const FriendsChat = ({ selectedFriend, currentUserId }: FriendsChatProps) => {
     sendMessage,
     editMessage,
     deleteMessage,
+    pendingRequests,
+    acceptFriendRequest,
+    declineFriendRequest,
   } = useFriendsChat(selectedFriend?._id);
 
   const [messageInput, setMessageInput] = useState('');
@@ -60,7 +64,63 @@ const FriendsChat = ({ selectedFriend, currentUserId }: FriendsChatProps) => {
 
   return (
     <div className="chat-area">
-      {selectedFriend ? (
+      {activeTab === 'requests' ? (
+        // Friend Requests View
+        <section className="requests-area">
+          <div className="requests-header">
+            <h2>Friend Requests</h2>
+          </div>
+          {pendingRequests.length === 0 ? (
+            <div className="chat-empty">
+              <p>No pending requests</p>
+            </div>
+          ) : (
+            <div className="requests-list">
+              {pendingRequests.map((request) => (
+                <div key={request._id} className="request-item">
+                  <div className="request-avatar">
+                    {request.profilePicture ? (
+                      <img src={request.profilePicture} alt={request.username} />
+                    ) : (
+                      <span>{(request.username || '?')[0]}</span>
+                    )}
+                  </div>
+                  <div className="request-info">
+                    <h3>{request.username}</h3>
+                  </div>
+                  <div className="request-actions">
+                    <button
+                      className="request-btn request-accept"
+                      onClick={async () => {
+                        const success = await acceptFriendRequest(request._id);
+                        if (!success) {
+                          alert('Failed to accept friend request');
+                        }
+                      }}
+                      title="Accept"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      className="request-btn request-decline"
+                      onClick={async () => {
+                        const success = await declineFriendRequest(request._id);
+                        if (!success) {
+                          alert('Failed to decline friend request');
+                        }
+                      }}
+                      title="Decline"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : selectedFriend ? (
+        // Chat View
         <>
           <header className="chat-header">
             <div className="chat-friend-info">

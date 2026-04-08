@@ -8,8 +8,12 @@ const getSocketUrl = () => {
 };
 
 export const initSocket = (userId: string) => {
-  if (socket?.connected) return socket;
+  if (socket?.connected) {
+    console.log('[socketService] Socket already connected, returning existing socket');
+    return socket;
+  }
 
+  console.log('[socketService] Initializing Socket.IO with userId:', userId);
   socket = io(getSocketUrl(), {
     auth: {
       userId: userId
@@ -21,15 +25,16 @@ export const initSocket = (userId: string) => {
   });
 
   socket.on('connect', () => {
-    console.log('✅ Socket.IO connected:', socket?.id);
+    console.log('[socketService] ✅ Socket.IO connected, sid:', socket?.id);
+    console.log('[socketService] Socket is now ready for listeners');
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Socket.IO disconnected');
+    console.log('[socketService] ❌ Socket.IO disconnected');
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket.IO error:', error);
+    console.error('[socketService] Socket.IO connection error:', error);
   });
 
   return socket;
@@ -66,4 +71,50 @@ export const offReceiveMessage = (callback: (message: any) => void) => {
   if (socket) {
     socket.off('receive-message', callback);
   }
+};
+
+// Friend request handlers
+export const onFriendRequestReceived = (callback: (data: any) => void) => {
+  if (!socket) {
+    console.warn('[socketService] Socket not initialized when registering onFriendRequestReceived');
+    return;
+  }
+  console.log('[socketService] Registering onFriendRequestReceived listener');
+  socket.on('friend-request-received', callback);
+};
+
+export const offFriendRequestReceived = (callback: (data: any) => void) => {
+  if (!socket) return;
+  console.log('[socketService] Unregistering onFriendRequestReceived listener');
+  socket.off('friend-request-received', callback);
+};
+
+export const onFriendRequestAccepted = (callback: (data: any) => void) => {
+  if (!socket) {
+    console.warn('[socketService] Socket not initialized when registering onFriendRequestAccepted');
+    return;
+  }
+  console.log('[socketService] Registering onFriendRequestAccepted listener');
+  socket.on('friend-request-accepted', callback);
+};
+
+export const offFriendRequestAccepted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  console.log('[socketService] Unregistering onFriendRequestAccepted listener');
+  socket.off('friend-request-accepted', callback);
+};
+
+export const onFriendRequestDeclined = (callback: (data: any) => void) => {
+  if (!socket) {
+    console.warn('[socketService] Socket not initialized when registering onFriendRequestDeclined');
+    return;
+  }
+  console.log('[socketService] Registering onFriendRequestDeclined listener');
+  socket.on('friend-request-declined', callback);
+};
+
+export const offFriendRequestDeclined = (callback: (data: any) => void) => {
+  if (!socket) return;
+  console.log('[socketService] Unregistering onFriendRequestDeclined listener');
+  socket.off('friend-request-declined', callback);
 };

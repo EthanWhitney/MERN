@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import './FriendsPage.css';
 import { authFetch } from '../utils/authFetch';
 import FriendsPanel from '../components/FriendsPanel';
@@ -13,9 +13,20 @@ interface Friend {
 
 const FriendsPage = () => {
   const { friendId } = useParams<{ friendId?: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [activeTab, setActiveTab] = useState<'online' | 'all' | 'requests'>('all');
+
+  // Detect if we're on the requests page based on URL
+  useEffect(() => {
+    if (location.pathname === '/friends/requests') {
+      setActiveTab('requests');
+    } else {
+      setActiveTab('all');
+    }
+  }, [location.pathname]);
 
   // Derive currentUserId from localStorage for passing to FriendsChat
   const currentUserId = useMemo(() => {
@@ -62,8 +73,24 @@ const FriendsPage = () => {
   return (
     <div className="friends-screen">
       <div className="friends-glow" aria-hidden="true" />
-      <FriendsPanel selectedFriend={selectedFriend} onSelectFriend={handleSelectFriend} />
-      <FriendsChat selectedFriend={selectedFriend} currentUserId={currentUserId} />
+      <FriendsPanel 
+        selectedFriend={selectedFriend} 
+        onSelectFriend={handleSelectFriend}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'requests') {
+            navigate('/friends/requests');
+          } else {
+            navigate('/friends');
+          }
+        }}
+      />
+      <FriendsChat 
+        selectedFriend={selectedFriend} 
+        currentUserId={currentUserId}
+        activeTab={activeTab}
+      />
     </div>
   );
 };

@@ -27,6 +27,7 @@ function App() {
         <Route path="/login" element={<LoginPage/>}/>
         <Route path="/register" element={<Register/>}/>
         <Route path="/friends" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>
+        <Route path="/friends/requests" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>
         <Route path="/friends/:friendId" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>
         <Route path="/cards" element={<ProtectedRoute><CardPage/></ProtectedRoute>}/>
         <Route path="/chat" element={<ProtectedRoute><ChatPage/></ProtectedRoute>}/>

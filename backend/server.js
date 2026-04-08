@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const socketManager = require('./utils/socketManager');
 
 const MongoClient = require('mongodb').MongoClient;
 const url = process.env.MONGODB_URI;
@@ -67,9 +68,22 @@ const io = new Server(httpServer, {
   }
 });
 
+// Store mapping of userId to socketId for targeting specific users
+const userSockets = new Map();
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  const userId = socket.handshake.auth.userId;
+  console.log('[Socket.IO] New connection:', socket.id);
+  console.log('[Socket.IO] Auth userId:', userId);
+  
+  if (userId) {
+    userSockets.set(userId, socket.id);
+    console.log('[Socket.IO] ✅ User connected:', userId, 'Socket:', socket.id);
+    console.log('[Socket.IO] userSockets Map:', Array.from(userSockets.entries()));
+  } else {
+    console.log('[Socket.IO] ❌ No userId in auth, connection not tracked');
+  }
 
   // Handle joining a DM room
   socket.on('join-dm', (recipientId) => {
@@ -94,8 +108,21 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('[Socket.IO] User disconnect event, userId:', userId);
+    if (userId) {
+      const wasTracked = userSockets.has(userId);
+      userSockets.delete(userId);
+      console.log('[Socket.IO] ✅ Removed user from tracking:', userId, 'Was tracked:', wasTracked);
+      console.log('[Socket.IO] Remaining users:', Array.from(userSockets.entries()));
+    } else {
+      console.log('[Socket.IO] ❌ Disconnect event but user was not tracked');
+    }
   });
 });
+
+// Export io instance and userSockets mapping for use in controllers
+socketManager.setSocketIO(io, userSockets);
+
+module.exports = { httpServer, io, userSockets };
 
 httpServer.listen(5000); // start HTTP server with Socket.IO on port 5000

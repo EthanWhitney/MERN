@@ -20,4 +20,7 @@ router.post('/resend-code', authController.resendVerificationCode);
 // POST /api/auth/refresh
 router.post('/refresh', authController.refreshAccessToken);
 
+// POST /api/auth/recover-account
+router.post('/recover-account', authController.recoverAccount);
+
 module.exports = router;

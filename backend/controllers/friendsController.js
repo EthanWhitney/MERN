@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const socketManager = require('../utils/socketManager');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -50,6 +51,14 @@ const sendFriendRequest = async (req, res) => {
       { $addToSet: { friendRequests: { from: senderObjId, status: 'pending' } } }
     );
 
+    // Notify recipient if they're online
+    console.log('[friendsController] Attempting to notify recipient:', friendId);
+    socketManager.notifyFriendRequest(friendId, {
+      fromId: senderId,
+      fromUsername: sender.username,
+      fromProfilePicture: sender.profilePicture
+    });
+
     return res.status(200).json({ message: 'Request sent!' });
   } catch (e) {
     return res.status(500).json({ error: e.toString() });
@@ -65,6 +74,10 @@ const acceptFriendRequest = async (req, res) => {
     const userObjId = new ObjectId(userId);
     const friendObjId = new ObjectId(friendId);
 
+    // Fetch friend's info before updating
+    const friend = await db.collection('users').findOne({ _id: friendObjId });
+    const user = await db.collection('users').findOne({ _id: userObjId });
+
     // update both users: add to friends, rem from pending
     await Promise.all([
       db.collection('users').updateOne({ _id: userObjId }, { 
@@ -75,6 +88,22 @@ const acceptFriendRequest = async (req, res) => {
         $addToSet: { friends: userObjId } 
       })
     ]);
+
+    // Notify both users about the accepted request
+    console.log('[friendsController] Notifying both users of accepted request:');
+    console.log('[friendsController] - Notifying original acceptor (userId):', userId);
+    socketManager.notifyFriendRequestAccepted(userId, {
+      friendId: friendId,
+      friendUsername: friend.username,
+      friendProfilePicture: friend.profilePicture
+    });
+
+    console.log('[friendsController] - Notifying original requester (friendId):', friendId);
+    socketManager.notifyFriendRequestAccepted(friendId, {
+      friendId: userId,
+      friendUsername: user.username,
+      friendProfilePicture: user.profilePicture
+    });
 
     return res.status(200).json({ message: 'Friend request accepted!' });
   } catch (e) {
@@ -122,6 +151,13 @@ const removeFriend = async (req, res) => {
       .find({ _id: { $in: friendIds } })
       .project({ username: 1, profilePicture: 1 })
       .toArray();
+
+    // Notify the friend that request was declined
+    socketManager.notifyFriendRequestDeclined(friendId, {
+      userId: userId,
+      username: user.username,
+      profilePicture: user.profilePicture
+    });
 
     return res.status(200).json({ friends: friendProfiles, error: '' });
   } catch (e) {
@@ -188,7 +224,7 @@ const searchUserByUsername = async (req, res) => {
     const searchName = username.trim().toLowerCase();
 
     const user = await db.collection('users').findOne({
-      username: searchName
+      username: { $regex: `^${searchName}$`, $options: 'i' }
     });
 
     if (!user) {
