@@ -24,11 +24,14 @@ function ChatThreadView({ serverId, channelId, recieverId, showSidebar = true, c
     messages,
     loading,
     error,
+    isLoadingMore,
+    allMessagesLoaded,
     setActiveThread,
     setMessages,
     sendMessage,
     editMessage,
     removeMessage,
+    loadMoreMessages,
   } = useChatThread(serverId, channelId, recieverId);
 
   const currentUserId = useMemo(() => {
@@ -80,6 +83,9 @@ function ChatThreadView({ serverId, channelId, recieverId, showSidebar = true, c
           messages={messages}
           onEditMessage={editMessage}
           onDeleteMessage={removeMessage}
+          isLoadingMore={isLoadingMore}
+          onLoadMore={loadMoreMessages}
+          allMessagesLoaded={allMessagesLoaded}
         />
 
         <MessageComposer

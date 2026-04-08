@@ -38,6 +38,9 @@ export const useFriendsChat = (recipientId?: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [oldestMessageTime, setOldestMessageTime] = useState<string | null>(null);
+  const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
 
   const userId = useMemo(() => {
     try {
@@ -241,6 +244,7 @@ export const useFriendsChat = (recipientId?: string) => {
       
       if (!targetId || !userId) {
         setMessages([]);
+        setOldestMessageTime(null);
         return;
       }
 
@@ -261,7 +265,19 @@ export const useFriendsChat = (recipientId?: string) => {
           throw new Error(payload.error);
         }
 
-        setMessages(payload.messages || []);
+        const loadedMessages = payload.messages || [];
+        setMessages(loadedMessages);
+        
+        // Track the oldest message's timestamp and whether all messages are loaded
+        if (loadedMessages.length > 0) {
+          const oldest = loadedMessages[0];
+          setOldestMessageTime(oldest.createdAt || null);
+          // If we got fewer than 50 messages, we've reached the beginning
+          setAllMessagesLoaded(loadedMessages.length < 50);
+        } else {
+          setOldestMessageTime(null);
+          setAllMessagesLoaded(true);
+        }
 
         // Join the DM room for real-time updates
         joinDMRoom(targetId);
@@ -269,6 +285,8 @@ export const useFriendsChat = (recipientId?: string) => {
         console.error('Error loading messages:', err);
         setError('Failed to load messages');
         setMessages([]);
+        setOldestMessageTime(null);
+        setAllMessagesLoaded(true);
       } finally {
         setLoading(false);
       }
@@ -534,11 +552,47 @@ export const useFriendsChat = (recipientId?: string) => {
     loading,
     error,
     isSending,
+    isLoadingMore,
+    allMessagesLoaded,
     sendMessage,
     addFriend,
     acceptFriendRequest,
     declineFriendRequest,
     editMessage,
     deleteMessage,
+    loadMoreMessages: async () => {
+      const targetId = recipientId || selectedFriend?._id;
+      if (!targetId || !userId || messages.length === 0 || !oldestMessageTime) return;
+
+      setIsLoadingMore(true);
+      try {
+        const response = await authFetch(
+          `api/chat/dms/${targetId}/messages?limit=50&before=${encodeURIComponent(oldestMessageTime)}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to load more messages.');
+        }
+
+        const payload = await response.json();
+        if (payload.error) {
+          throw new Error(payload.error);
+        }
+
+        if (payload.messages && payload.messages.length > 0) {
+          setMessages(prevMessages => [...payload.messages, ...prevMessages]);
+          const newOldest = payload.messages[0];
+          setOldestMessageTime(newOldest.createdAt || null);
+          // If we got fewer than 50 messages, we've reached the beginning
+          if (payload.messages.length < 50) {
+            setAllMessagesLoaded(true);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error loading more messages:', err);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    },
   };
 };

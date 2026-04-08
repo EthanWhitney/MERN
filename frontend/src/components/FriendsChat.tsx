@@ -23,16 +23,23 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab }: FriendsChatPr
     loading,
     error,
     isSending,
+    isLoadingMore,
+    allMessagesLoaded,
     sendMessage,
     editMessage,
     deleteMessage,
     pendingRequests,
     acceptFriendRequest,
     declineFriendRequest,
+    loadMoreMessages,
   } = useFriendsChat(selectedFriend?._id);
 
   const [messageInput, setMessageInput] = useState('');
+  const [showTopPopup, setShowTopPopup] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<HTMLElement>(null);
+  const prevScrollHeightRef = useRef<number>(0);
+  const shouldPreserveScrollRef = useRef<boolean>(false);
 
   // Derive current user's username from localStorage
   const currentUsername = useMemo(() => {
@@ -46,10 +53,50 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab }: FriendsChatPr
     }
   }, []);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change (but not when loading more)
   useEffect(() => {
+    if (isLoadingMore) {
+      return;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoadingMore]);
+
+  // Track scroll position when loading more messages to restore it after render
+  useEffect(() => {
+    const el = chatMessagesRef.current;
+    if (!el) return;
+
+    // When starting to load more messages, save scroll height
+    if (isLoadingMore && !shouldPreserveScrollRef.current) {
+      prevScrollHeightRef.current = el.scrollHeight;
+      shouldPreserveScrollRef.current = true;
+      return;
+    }
+
+    // After loading more messages, restore scroll position
+    if (!isLoadingMore && shouldPreserveScrollRef.current) {
+      const heightDifference = el.scrollHeight - prevScrollHeightRef.current;
+      el.scrollTop += heightDifference;
+      shouldPreserveScrollRef.current = false;
+    }
+  }, [isLoadingMore]);
+
+  // Show popup when scrolled to top
+  useEffect(() => {
+    if (!selectedFriend) {
+      return;
+    }
+
+    const el = chatMessagesRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      setShowTopPopup(el.scrollTop === 0);
+    };
+
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [selectedFriend]);
 
   // Group messages by sender for continuous chat display
   const messageGroups = useMemo(() => {
@@ -142,7 +189,17 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab }: FriendsChatPr
           {loading && <p className="muted chat-thread-status">Loading chat...</p>}
           {error && <p className="error-text chat-thread-status">{error}</p>}
 
-          <section className="chat-messages">
+          {showTopPopup && !allMessagesLoaded && (
+            <div 
+              className="top-popup"
+              onClick={loadMoreMessages}
+              style={{ cursor: isLoadingMore ? 'not-allowed' : 'pointer' }}
+            >
+              {isLoadingMore ? 'Loading...' : 'Load More'}
+            </div>
+          )}
+
+          <section className="chat-messages" ref={chatMessagesRef}>
             {messageGroups.map((group, index) => {
               const isOwnMessage = group.senderId === currentUserId;
               return (
