@@ -10,7 +10,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const socketManager = require('./utils/socketManager');
 
-const MongoClient = require('mongodb').MongoClient;
+const { MongoClient, ObjectId } = require('mongodb');
 const url = process.env.MONGODB_URI;
 
 const client = new MongoClient(url);
@@ -27,7 +27,6 @@ const api = require('./api');
 
 const app = express();
 app.use(cors());
-// app.use(bodyParser.json());
 app.use(express.json());
 
 // Use routes
@@ -41,8 +40,7 @@ app.use('/', chatRoutes);
 // Initialize API endpoints
 api.setApp(app, client);
 
-app.use((req, res, next) => 
-{
+app.use((req, res, next) => {
   app.get("/api/ping", (req, res, next) => {
     res.status(200).json({ message: "Hello World" });
   });
@@ -72,15 +70,38 @@ const io = new Server(httpServer, {
 const userSockets = new Map();
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
   console.log('[Socket.IO] New connection:', socket.id);
   console.log('[Socket.IO] Auth userId:', userId);
-  
+
   if (userId) {
     userSockets.set(userId, socket.id);
     console.log('[Socket.IO] ✅ User connected:', userId, 'Socket:', socket.id);
-    console.log('[Socket.IO] userSockets Map:', Array.from(userSockets.entries()));
+
+    // Look up user's servers to join presence rooms and broadcast online status
+    try {
+      const db = client.db('discord_clone');
+      const user = await db.collection('users').findOne(
+        { _id: new ObjectId(userId) },
+        { projection: { servers: 1 } }
+      );
+      const serverIds = (user?.servers || []).map(id => id.toString());
+      socket.data.serverIds = serverIds;
+
+      // Join a presence room for each server the user belongs to
+      serverIds.forEach(sid => socket.join(`server-presence:${sid}`));
+
+      // Tell all other members in those servers that this user just came online
+      serverIds.forEach(sid => {
+        socket.to(`server-presence:${sid}`).emit('member-online', { userId });
+      });
+
+      console.log(`[Socket.IO] User ${userId} joined presence rooms for ${serverIds.length} server(s)`);
+    } catch (e) {
+      console.error('[Socket.IO] Error joining server presence rooms:', e);
+      socket.data.serverIds = [];
+    }
   } else {
     console.log('[Socket.IO] ❌ No userId in auth, connection not tracked');
   }
@@ -96,13 +117,12 @@ io.on('connection', (socket) => {
   socket.on('send-dm', (data) => {
     const { recipientId, message } = data;
     const roomId = [socket.handshake.auth.userId, recipientId].sort().join('-');
-    
-    // Broadcast message to room (both sender and recipient)
+
     io.to(roomId).emit('receive-message', {
       ...message,
       senderId: socket.handshake.auth.userId,
     });
-    
+
     console.log(`Message sent in room ${roomId}`);
   });
 
@@ -110,12 +130,16 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('[Socket.IO] User disconnect event, userId:', userId);
     if (userId) {
-      const wasTracked = userSockets.has(userId);
       userSockets.delete(userId);
-      console.log('[Socket.IO] ✅ Removed user from tracking:', userId, 'Was tracked:', wasTracked);
-      console.log('[Socket.IO] Remaining users:', Array.from(userSockets.entries()));
-    } else {
-      console.log('[Socket.IO] ❌ Disconnect event but user was not tracked');
+      console.log('[Socket.IO] ✅ Removed user from tracking:', userId);
+
+      // Broadcast offline status to all server presence rooms
+      const serverIds = socket.data?.serverIds || [];
+      serverIds.forEach(sid => {
+        socket.to(`server-presence:${sid}`).emit('member-offline', { userId });
+      });
+
+      console.log(`[Socket.IO] Broadcasted offline for user ${userId} to ${serverIds.length} server(s)`);
     }
   });
 });
@@ -125,4 +149,5 @@ socketManager.setSocketIO(io, userSockets);
 
 module.exports = { httpServer, io, userSockets };
 
-httpServer.listen(5000); // start HTTP server with Socket.IO on port 5000
+httpServer.listen(5000);
+console.log('[Server] Listening on port 5000');

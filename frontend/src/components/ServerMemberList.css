@@ -1,0 +1,155 @@
+/* ServerMemberList.css */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+
+.member-list {
+  width: 240px;
+  min-width: 240px;
+  background: #111722;
+  border-left: 1px solid #1c2333;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Section headers */
+.member-list-section {
+  padding: 0 10px 8px;
+}
+
+.member-list-section + .member-list-section {
+  margin-top: 4px;
+}
+
+.member-section-label {
+  padding: 16px 10px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a5568;
+  user-select: none;
+}
+
+/* Scrollable area */
+.member-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 16px;
+}
+
+.member-list-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.member-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.member-list-scroll::-webkit-scrollbar-thumb {
+  background: #1e2738;
+  border-radius: 4px;
+}
+
+/* Individual member row */
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  margin: 1px 8px;
+  cursor: default;
+  transition: background 150ms ease;
+}
+
+.member-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Avatar wrapper — holds avatar + presence dot */
+.member-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2d3a52, #1e2738);
+  display: grid;
+  place-items: center;
+  color: #8fa3c8;
+  font-weight: 600;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Presence dot */
+.member-presence-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #111722;
+  transition: background 300ms ease;
+}
+
+.member-presence-dot.online {
+  background: #3ba55d;
+  box-shadow: 0 0 6px rgba(59, 165, 93, 0.5);
+}
+
+.member-presence-dot.offline {
+  background: #4a5568;
+}
+
+/* Member name */
+.member-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #8b98b1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 150ms ease;
+}
+
+.member-row:hover .member-name {
+  color: #c8d3e8;
+}
+
+.member-row.member-online .member-name {
+  color: #aebdd4;
+}
+
+/* Loading / empty states */
+.member-list-status {
+  padding: 20px 16px;
+  font-size: 0.82rem;
+  color: #4a5568;
+  text-align: center;
+}
+
+/* Count badges in section labels */
+.member-section-count {
+  margin-left: 4px;
+  color: #4a5568;
+}
+
+/* Responsive — hide on narrow screens */
+@media (max-width: 1100px) {
+  .member-list {
+    display: none;
+  }
+}

@@ -13,6 +13,8 @@ const {
   joinServer,
   leaveServer,
   getServerMembers,
+  getServerMemberProfiles,
+  getOnlineMembers,
   updateServerProfile,
   assignRole,
   removeRole,
@@ -47,6 +49,12 @@ router.post('/:serverId/textChannels', createTextChannel);
 router.post('/:serverId/join', joinServer);
 router.delete('/:serverId/leave', leaveServer);
 router.get('/:serverId/members', getServerMembers);
+
+// ── NEW: enriched profiles & real-time online status ──────────────────────────
+router.get('/:serverId/members/profiles', getServerMemberProfiles);
+router.get('/:serverId/members/online', getOnlineMembers);
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.patch('/:serverId/profile/:userId', updateServerProfile);
 
 // server role assignment
@@ -66,6 +74,5 @@ router.patch('/:serverId/voiceChannels/:channelId', updateVoiceChannel);
 router.delete('/:serverId/voiceChannels/:channelId', deleteVoiceChannel);
 router.post('/:serverId/voiceChannels/:channelId/join', joinVoiceChannel);
 router.delete('/:serverId/voiceChannels/:channelId/leave', leaveVoiceChannel);
-
 
 module.exports = router;

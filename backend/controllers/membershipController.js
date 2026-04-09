@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const socketManager = require('../utils/socketManager');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -67,7 +68,7 @@ const joinServer = async (req, res) => {
       ),
       db.collection('users').updateOne(
         { _id: userObjId },
-        { $addToSet: { servers: serverObjId } }
+        { $addToSet: { servers: serverId } }
       ),
     ]);
 
@@ -139,6 +140,83 @@ const getServerMembers = async (req, res) => {
   } catch (e) {
     error = e.toString();
     return res.status(500).json({ members: [], error });
+  }
+};
+
+// GET /api/servers/:serverId/members/profiles
+// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName)
+const getServerMemberProfiles = async (req, res) => {
+  const { serverId } = req.params;
+  let error = '';
+
+  try {
+    if (!ObjectId.isValid(serverId)) {
+      error = 'Invalid server ID';
+      return res.status(400).json({ members: [], error });
+    }
+
+    const db = client.db('discord_clone');
+    const serverProfiles = await db.collection('serverProfiles')
+      .find({ serverId: new ObjectId(serverId) })
+      .toArray();
+
+    if (serverProfiles.length === 0) {
+      return res.status(200).json({ members: [], error: '' });
+    }
+
+    // Enrich with user data (username, profilePicture)
+    const userIds = serverProfiles.map(p => p.userId);
+    const users = await db.collection('users')
+      .find({ _id: { $in: userIds } })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
+      .toArray();
+
+    const userMap = {};
+    users.forEach(u => { userMap[u._id.toString()] = u; });
+
+    const members = serverProfiles.map(p => {
+      const user = userMap[p.userId.toString()] || {};
+      return {
+        userId: p.userId.toString(),
+        username: user.username || p.serverSpecificName || 'Unknown',
+        profilePicture: user.profilePicture || '',
+        serverSpecificName: p.serverSpecificName || '',
+      };
+    });
+
+    return res.status(200).json({ members, error: '' });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ members: [], error });
+  }
+};
+
+// GET /api/servers/:serverId/members/online
+// Returns the subset of member userIds that are currently connected via socket
+const getOnlineMembers = async (req, res) => {
+  const { serverId } = req.params;
+  let error = '';
+
+  try {
+    if (!ObjectId.isValid(serverId)) {
+      error = 'Invalid server ID';
+      return res.status(400).json({ onlineUserIds: [], error });
+    }
+
+    const db = client.db('discord_clone');
+    const profiles = await db.collection('serverProfiles')
+      .find({ serverId: new ObjectId(serverId) })
+      .project({ userId: 1 })
+      .toArray();
+
+    const memberIds = profiles.map(p => p.userId.toString());
+    // Filter to only the ones that have an active socket connection
+    const onlineUserIds = memberIds.filter(id => !!socketManager.getUserSocketId(id));
+
+    return res.status(200).json({ onlineUserIds, error: '' });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ onlineUserIds: [], error });
   }
 };
 
@@ -263,6 +341,8 @@ module.exports = {
   joinServer,
   leaveServer,
   getServerMembers,
+  getServerMemberProfiles,
+  getOnlineMembers,
   updateServerProfile,
   assignRole,
   removeRole,
