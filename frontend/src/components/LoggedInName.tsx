@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import ProfileModal from './ProfileModal';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
+import { authFetch } from '../utils/authFetch';
 import './LoggedInName.css';
 
 function LoggedInName() {
@@ -24,8 +25,26 @@ function LoggedInName() {
 
   function doLogout(event: any): void {
     event.preventDefault();
-    localStorage.removeItem('user_data');
-    window.location.href = '/';
+    
+    // Call logout API to set online=false
+    authFetch('api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    }).then(response => {
+      console.log('[LoggedInName] Logout response status:', response.status);
+      if (!response.ok) {
+        console.warn('Logout API returned non-ok status');
+      }
+    }).catch(err => {
+      console.error('Logout API error:', err);
+    }).finally(() => {
+      // Clear tokens and user data
+      localStorage.removeItem('user_data');
+      localStorage.removeItem('token_data');
+      localStorage.removeItem('refresh_token_data');
+      window.location.href = '/';
+    });
   }
 
   const handleProfilePictureUpdated = () => {

@@ -123,6 +123,8 @@ const login = async (req, res) => {
   const emailOrUsername = req.body.emailOrUsername ? req.body.emailOrUsername.trim().toLowerCase() : '';
   let error = '';
 
+  console.log('[Login] Login request received for:', emailOrUsername);
+
   try {
     // Validate required fields
     if (!emailOrUsername || !password) {
@@ -169,6 +171,8 @@ const login = async (req, res) => {
       return res.status(401).json({ userId: null, username: '', error });
     }
 
+    console.log('[Login] Password matched for user:', user._id.toString());
+
     // Generate access + refresh tokens
     const tokenResult = jwtManager.createTokenPair(user._id.toString(), user.email, user.username);
     console.log('Token generation result:', tokenResult);
@@ -189,6 +193,39 @@ const login = async (req, res) => {
     error = e.toString();
     console.error('Login error:', error);
     return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
+  }
+};
+
+// Logout user
+const logout = async (req, res) => {
+  const userId = req.userId;
+  let error = '';
+
+  try {
+    console.log('[Logout] Logout request for userId:', userId);
+    
+    if (!userId) {
+      error = 'User ID not found in request';
+      console.error('[Logout] Error - User ID not found');
+      return res.status(400).json({ error });
+    }
+
+    const db = client.db('discord_clone');
+
+    // Verify user exists
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      console.error('[Logout] User not found in database:', userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log('[Logout] Successfully processed logout for userId:', userId);
+    // Note: Online status is now managed by socket.io disconnect, not by explicit logout
+    return res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (e) {
+    error = e.toString();
+    console.error('Logout error:', error);
+    return res.status(500).json({ error });
   }
 };
 
@@ -279,6 +316,8 @@ const verifyEmail = async (req, res) => {
       active: true,
       createdAt: unverifiedUser.createdAt
     };
+
+    console.log('[VerifyEmail] Creating new user:', { username: newUser.username, timestamp: new Date().toISOString() });
 
     // Insert into users collection
     const insertResult = await db.collection('users').insertOne(newUser);
@@ -480,6 +519,8 @@ const recoverAccount = async (req, res) => {
       createdAt: unverifiedUser.createdAt
     };
 
+    console.log('[RecoverAccount] Creating new user:', { username: newUser.username, timestamp: new Date().toISOString() });
+
     const insertResult = await db.collection('users').insertOne(newUser);
     const userId = insertResult.insertedId.toString();
 
@@ -504,6 +545,7 @@ const recoverAccount = async (req, res) => {
 module.exports = {
   register,
   login,
+  logout,
   getUserProfile,
   verifyEmail,
   resendVerificationCode,

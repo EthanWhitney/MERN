@@ -38,6 +38,24 @@ const notifyFriendRequestDeclined = (userId, data) => {
   emitToUser(userId, 'friend-request-declined', data);
 };
 
+const notifyUserOnline = (userId, friends) => {
+  // Notify all friends that this user is now online
+  if (!friends || friends.length === 0) return;
+  
+  friends.forEach(friendId => {
+    emitToUser(friendId, 'user-online', { userId, username: userId });
+  });
+};
+
+const notifyUserOffline = (userId, friends) => {
+  // Notify all friends that this user is now offline
+  if (!friends || friends.length === 0) return;
+  
+  friends.forEach(friendId => {
+    emitToUser(friendId, 'user-offline', { userId, username: userId });
+  });
+};
+
 module.exports = {
   setSocketIO,
   getIO,
@@ -45,5 +63,7 @@ module.exports = {
   emitToUser,
   notifyFriendRequest,
   notifyFriendRequestAccepted,
-  notifyFriendRequestDeclined
+  notifyFriendRequestDeclined,
+  notifyUserOnline,
+  notifyUserOffline
 };

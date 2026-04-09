@@ -8,6 +8,14 @@ if (!client.topology || !client.topology.isConnected()) {
   client.connect();
 }
 
+// Helper function to check if a user is online (has active socket)
+const isUserOnline = (userId) => {
+  // Lazy require to avoid circular dependency
+  const { userSocketsMultiple } = require('../server');
+  const sockets = userSocketsMultiple.get(userId);
+  return sockets && sockets.size > 0;
+};
+
 // send friend req
 // POST /api/users/friends/:friendId
 const sendFriendRequest = async (req, res) => {
@@ -200,8 +208,14 @@ const getFriends = async (req, res) => {
       .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
-    console.log('Returning', friendProfiles.length, 'friends');
-    return res.status(200).json({ friends: friendProfiles, error: '' });
+    // Add online status based on socket connections
+    const friendsWithStatus = friendProfiles.map(friend => ({
+      ...friend,
+      online: isUserOnline(friend._id.toString())
+    }));
+
+    console.log('Returning', friendsWithStatus.length, 'friends with online status');
+    return res.status(200).json({ friends: friendsWithStatus, error: '' });
   } catch (e) {
     error = e.toString();
     console.error('Error in getFriends:', error);
@@ -258,13 +272,19 @@ const getPendingRequests = async (req, res) => {
     }
 
     // get the profiles for everyone who sent a request
-    const requesterIds = user.friendRequests.map(r => r.from);
+    const requesterIds =  user.friendRequests.map(r => r.from);
     const profiles = await db.collection('users')
       .find({ _id: { $in: requesterIds } })
-      .project({ username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
-    return res.status(200).json({ requests: profiles });
+    // Add online status based on socket connections
+    const profilesWithStatus = profiles.map(profile => ({
+      ...profile,
+      online: isUserOnline(profile._id.toString())
+    }));
+
+    return res.status(200).json({ requests: profilesWithStatus });
   } catch (e) {
     return res.status(500).json({ error: e.toString() });
   }

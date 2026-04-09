@@ -9,6 +9,7 @@ interface Friend {
   _id: string;
   username: string;
   profilePicture?: string;
+  online?: boolean;
 }
 
 interface FriendsChatProps {
@@ -185,7 +186,7 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
               </div>
               <div className="chat-friend-details">
                 <h2>{selectedFriend.username}</h2>
-                <p className="chat-friend-status">Active now</p>
+                <p className="chat-friend-status">{selectedFriend.online ? 'Online' : 'Offline'}</p>
               </div>
             </div>
           </header>
@@ -254,6 +255,40 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
           ) : (
             <div className="all-friends-list">
               {friends.map((friend) => (
+                <div
+                  key={friend._id}
+                  className="friend-item"
+                  onClick={() => onSelectFriend?.(friend)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="friend-avatar">
+                    {friend.profilePicture ? (
+                      <img src={normalizeProfilePicturePath(friend.profilePicture)} alt={friend.username} />
+                    ) : (
+                      <span>{(friend.username || '?')[0]}</span>
+                    )}
+                  </div>
+                  <div className="friend-info">
+                    <h3>{friend.username}</h3>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : activeTab === 'online' ? (
+        // Online Friends View
+        <section className="all-friends-area">
+          <div className="all-friends-header">
+            <h2>Online Friends</h2>
+          </div>
+          {friends.filter(f => f.online).length === 0 ? (
+            <div className="chat-empty">
+              <p>No online friends</p>
+            </div>
+          ) : (
+            <div className="all-friends-list">
+              {friends.filter(f => f.online).map((friend) => (
                 <div
                   key={friend._id}
                   className="friend-item"

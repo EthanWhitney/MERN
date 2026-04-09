@@ -8,6 +8,9 @@ router.post('/register', authController.register);
 // POST /api/auth/login
 router.post('/login', authController.login);
 
+// POST /api/auth/logout
+router.post('/logout', require('../middleware/tokenMiddleware').verifyToken, authController.logout);
+
 // POST /api/auth/getUserProfile
 router.post('/getUserProfile', authController.getUserProfile);
 

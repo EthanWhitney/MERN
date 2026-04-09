@@ -9,6 +9,7 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const socketManager = require('./utils/socketManager');
+const { ObjectId } = require('mongodb');
 
 const MongoClient = require('mongodb').MongoClient;
 const url = process.env.MONGODB_URI;
@@ -70,17 +71,44 @@ const io = new Server(httpServer, {
 
 // Store mapping of userId to socketId for targeting specific users
 const userSockets = new Map();
+// Track multiple sockets per user: userId -> Set of socketIds
+const userSocketsMultiple = new Map();
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
-  console.log('[Socket.IO] New connection:', socket.id);
+  const now = new Date().toISOString();
+  console.log(`[Socket.IO] [${now}] New connection: ${socket.id}`);
   console.log('[Socket.IO] Auth userId:', userId);
   
   if (userId) {
+    // Track this socket for the user
     userSockets.set(userId, socket.id);
-    console.log('[Socket.IO] ✅ User connected:', userId, 'Socket:', socket.id);
+    
+    // Also track multiple connections per user
+    if (!userSocketsMultiple.has(userId)) {
+      userSocketsMultiple.set(userId, new Set());
+    }
+    const wasFirstSocket = userSocketsMultiple.get(userId).size === 0;
+    userSocketsMultiple.get(userId).add(socket.id);
+    
+    const socketCount = userSocketsMultiple.get(userId).size;
+    console.log(`[Socket.IO] [${now}] ✅ User connected: ${userId}, Socket: ${socket.id}, Total sockets for user: ${socketCount}`);
     console.log('[Socket.IO] userSockets Map:', Array.from(userSockets.entries()));
+
+    // If this is the FIRST socket for this user, notify all friends that they came online
+    if (wasFirstSocket) {
+      try {
+        const db = client.db('discord_clone');
+        const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+        if (user && user.friends && user.friends.length > 0) {
+          console.log(`[Socket.IO] [${now}] Notifying ${user.friends.length} friends that user ${userId} came online`);
+          socketManager.notifyUserOnline(userId, user.friends);
+        }
+      } catch (err) {
+        console.error('[Socket.IO] Error notifying friends on connect:', err);
+      }
+    }
   } else {
     console.log('[Socket.IO] ❌ No userId in auth, connection not tracked');
   }
@@ -107,12 +135,42 @@ io.on('connection', (socket) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log('[Socket.IO] User disconnect event, userId:', userId);
+  socket.on('disconnect', async () => {
+    const now = new Date().toISOString();
+    console.log(`[Socket.IO] [${now}] User disconnect event, userId: ${userId}, socketId: ${socket.id}`);
     if (userId) {
       const wasTracked = userSockets.has(userId);
-      userSockets.delete(userId);
-      console.log('[Socket.IO] ✅ Removed user from tracking:', userId, 'Was tracked:', wasTracked);
+      
+      // Remove this specific socket
+      if (userSocketsMultiple.has(userId)) {
+        userSocketsMultiple.get(userId).delete(socket.id);
+        const remainingSockets = userSocketsMultiple.get(userId).size;
+        console.log(`[Socket.IO] [${now}] Socket removed. Remaining sockets for user ${userId}: ${remainingSockets}`);
+        
+        // Only set online=false if this was the LAST socket for this user
+        if (remainingSockets === 0) {
+          userSocketsMultiple.delete(userId);
+          userSockets.delete(userId);
+          console.log(`[Socket.IO] [${now}] ✅ Last socket disconnected for user ${userId}. Notifying friends.`);
+
+          // Notify all friends that this user went offline
+          try {
+            const db = client.db('discord_clone');
+            const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+            if (user && user.friends && user.friends.length > 0) {
+              console.log(`[Socket.IO] [${now}] Notifying ${user.friends.length} friends that user ${userId} went offline`);
+              socketManager.notifyUserOffline(userId, user.friends);
+            }
+          } catch (err) {
+            console.error('[Socket.IO] Error notifying friends on disconnect:', err);
+          }
+        } else {
+          console.log(`[Socket.IO] [${now}] Socket disconnected but user has ${remainingSockets} other sockets. NOT notifying.`);
+        }
+      } else {
+        userSockets.delete(userId);
+        console.log('[Socket.IO] ✅ Removed user from tracking:', userId, 'Was tracked:', wasTracked);
+      }
       console.log('[Socket.IO] Remaining users:', Array.from(userSockets.entries()));
     } else {
       console.log('[Socket.IO] ❌ Disconnect event but user was not tracked');
@@ -123,6 +181,6 @@ io.on('connection', (socket) => {
 // Export io instance and userSockets mapping for use in controllers
 socketManager.setSocketIO(io, userSockets);
 
-module.exports = { httpServer, io, userSockets };
+module.exports = { httpServer, io, userSockets, userSocketsMultiple };
 
 httpServer.listen(5000); // start HTTP server with Socket.IO on port 5000

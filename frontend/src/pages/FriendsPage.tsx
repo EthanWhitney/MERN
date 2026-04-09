@@ -24,6 +24,8 @@ const FriendsPage = () => {
   useEffect(() => {
     if (location.pathname === '/friends/requests') {
       setActiveTab('requests');
+    } else if (location.pathname.startsWith('/friends/online')) {
+      setActiveTab('online');
     } else {
       setActiveTab('all');
     }
@@ -68,8 +70,11 @@ const FriendsPage = () => {
   // When friend is selected, navigate to their URL and switch away from All tab
   const handleSelectFriend = (friend: Friend) => {
     setSelectedFriend(friend);
-    setActiveTab('online');
-    navigate(`/friends/${friend._id}`);
+    if (activeTab === 'online') {
+      navigate(`/friends/online/${friend._id}`);
+    } else {
+      navigate(`/friends/${friend._id}`);
+    }
   };
 
   return (
@@ -86,7 +91,7 @@ const FriendsPage = () => {
             navigate('/friends');
           } else if (tab === 'online') {
             setSelectedFriend(null);
-            navigate('/friends');
+            navigate('/friends/online');
           } else if (tab === 'requests') {
             navigate('/friends/requests');
           }

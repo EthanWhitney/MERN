@@ -105,47 +105,34 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }
           </div>
         )}
 
-        {!loading && !error && activeTab === 'online' &&
-          friends.map((friend) => (
-            <article
-              className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
-              key={friend._id}
-              onClick={() => onSelectFriend(friend)}
-            >
-              <div className="friend-avatar">
-                {friend.profilePicture ? (
-                  <img src={normalizeProfilePicturePath(friend.profilePicture)} alt={friend.username} />
-                ) : (
-                  <span>{(friend.username || '?')[0]}</span>
-                )}
-              </div>
-              <div className="friend-meta">
-                <h2>{friend.username || 'Unknown user'}</h2>
-                <p>{friend.online ? 'Available' : 'Offline'}</p>
-              </div>
-            </article>
-          ))}
-
-        {!loading && !error && activeTab === 'all' &&
-          friends.map((friend) => (
-            <article
-              className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
-              key={friend._id}
-              onClick={() => onSelectFriend(friend)}
-            >
-              <div className="friend-avatar">
-                {friend.profilePicture ? (
-                  <img src={normalizeProfilePicturePath(friend.profilePicture)} alt={friend.username} />
-                ) : (
-                  <span>{(friend.username || '?')[0]}</span>
-                )}
-              </div>
-              <div className="friend-meta">
-                <h2>{friend.username || 'Unknown user'}</h2>
-                <p>Available</p>
-              </div>
-            </article>
-          ))}
+        {!loading && !error && activeTab !== 'requests' && friends.length > 0 && (
+          <>
+            <div style={{ paddingTop: '16px', paddingBottom: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#ffffff', margin: '0 12px' }}>
+                Friends
+              </h2>
+            </div>
+            {friends.map((friend) => (
+              <article
+                className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
+                key={friend._id}
+                onClick={() => onSelectFriend(friend)}
+              >
+                <div className="friend-avatar">
+                  {friend.profilePicture ? (
+                    <img src={normalizeProfilePicturePath(friend.profilePicture)} alt={friend.username} />
+                  ) : (
+                    <span>{(friend.username || '?')[0]}</span>
+                  )}
+                </div>
+                <div className="friend-meta">
+                  <h2>{friend.username || 'Unknown user'}</h2>
+                  <p>{friend.online ? 'Online' : 'Offline'}</p>
+                </div>
+              </article>
+            ))}
+          </>
+        )}
 
         {!loading && !error && activeTab === 'requests' && (
           <>
@@ -200,7 +187,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }
                         </div>
                         <div className="friend-meta">
                           <h2>{friend.username || 'Unknown user'}</h2>
-                          <p>Available</p>
+                          <p>{friend.online ? 'Online' : 'Offline'}</p>
                         </div>
                       </article>
                     ))}
