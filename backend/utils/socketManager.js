@@ -1,28 +1,31 @@
 // Socket.IO manager for emitting friend request events
 let io = null;
-let userSockets = null;
+let userSocketsMultiple = null;
 
-const setSocketIO = (ioInstance, userSocketsMap) => {
+const setSocketIO = (ioInstance, userSocketsMultipleMap) => {
   io = ioInstance;
-  userSockets = userSocketsMap;
+  userSocketsMultiple = userSocketsMultipleMap;
 };
 
 const getIO = () => io;
 
-const getUserSocketId = (userId) => {
-  return userSockets?.get(userId);
+const getUserSocketIds = (userId) => {
+  return userSocketsMultiple?.get(userId);
 };
 
 const emitToUser = (userId, event, data) => {
-  const socketId = getUserSocketId(userId);
+  const socketSet = getUserSocketIds(userId);
   console.log(`[socketManager] Attempting to emit ${event} to user ${userId}`);
-  console.log(`[socketManager] Socket ID found: ${socketId ? 'YES' : 'NO'}`);
-  console.log(`[socketManager] Current userSockets mapping:`, Array.from(userSockets?.entries() || []));
-  if (socketId && io) {
-    io.to(socketId).emit(event, data);
-    console.log(`[socketManager] Successfully emitted ${event} to user ${userId} (socket: ${socketId})`);
+  console.log(`[socketManager] Socket IDs found: ${socketSet ? socketSet.size : 0}`);
+  
+  if (socketSet && socketSet.size > 0 && io) {
+    console.log(`[socketManager] emitToUser - targeting user ${userId} with ${socketSet.size} socket(s) for event: ${event}`);
+    socketSet.forEach(socketId => {
+      io.to(socketId).emit(event, data);
+      console.log(`[socketManager] ✅ Emitted ${event} to socket ${socketId} for user ${userId}, data:`, data);
+    });
   } else {
-    console.log(`[socketManager] FAILED to emit ${event}: userId ${userId} not found in userSockets Map`);
+    console.log(`[socketManager] ❌ FAILED to emit ${event}: userId ${userId} has no active sockets`);
   }
 };
 
@@ -59,7 +62,6 @@ const notifyUserOffline = (userId, friends) => {
 module.exports = {
   setSocketIO,
   getIO,
-  getUserSocketId,
   emitToUser,
   notifyFriendRequest,
   notifyFriendRequestAccepted,

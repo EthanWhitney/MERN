@@ -15,7 +15,9 @@ const MongoClient = require('mongodb').MongoClient;
 const url = process.env.MONGODB_URI;
 
 const client = new MongoClient(url);
-client.connect();
+console.log('[Server] Connecting to MongoDB...');
+client.connect().catch(err => console.error('[Server] MongoDB connection error:', err));
+console.log('[Server] MongoDB connect() called (async)');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -61,6 +63,8 @@ app.use((req, res, next) =>
 
 // Create HTTP server for Socket.IO
 const httpServer = http.createServer(app);
+console.log('[Server] HTTP server created');
+
 const io = new Server(httpServer, {
   cors: {
     origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://syncord.space', 'https://syncord.space'],
@@ -68,6 +72,7 @@ const io = new Server(httpServer, {
     credentials: true
   }
 });
+console.log('[Server] Socket.IO server created');
 
 // Store mapping of userId to socketId for targeting specific users
 const userSockets = new Map();
@@ -75,7 +80,7 @@ const userSockets = new Map();
 const userSocketsMultiple = new Map();
 
 // Socket.IO connection handling
-io.on('connection', async (socket) => {
+io.on('connection', (socket) => {
   const userId = socket.handshake.auth.userId;
   const now = new Date().toISOString();
   console.log(`[Socket.IO] [${now}] New connection: ${socket.id}`);
@@ -95,19 +100,30 @@ io.on('connection', async (socket) => {
     const socketCount = userSocketsMultiple.get(userId).size;
     console.log(`[Socket.IO] [${now}] ✅ User connected: ${userId}, Socket: ${socket.id}, Total sockets for user: ${socketCount}`);
     console.log('[Socket.IO] userSockets Map:', Array.from(userSockets.entries()));
+    
+    // Join the status-updates room to receive online/offline notifications
+    socket.join('status-updates');
+    console.log(`[Socket.IO] [${now}] Socket ${socket.id} joined status-updates room`);
 
     // If this is the FIRST socket for this user, notify all friends that they came online
     if (wasFirstSocket) {
-      try {
-        const db = client.db('discord_clone');
-        const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-        if (user && user.friends && user.friends.length > 0) {
-          console.log(`[Socket.IO] [${now}] Notifying ${user.friends.length} friends that user ${userId} came online`);
-          socketManager.notifyUserOnline(userId, user.friends);
+      // Run async notification in background without blocking socket handler registration
+      (async () => {
+        try {
+          const db = client.db('discord_clone');
+          const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+          if (user && user.friends && user.friends.length > 0) {
+            console.log(`[Socket.IO] [${now}] Notifying ${user.friends.length} friends that user ${userId} came online`);
+            // Broadcast to the status-updates room (all connected users)
+            io.to('status-updates').emit('user-online', {
+              userId: userId,
+              username: user.username
+            });
+          }
+        } catch (err) {
+          console.error('[Socket.IO] Error notifying friends on connect:', err);
         }
-      } catch (err) {
-        console.error('[Socket.IO] Error notifying friends on connect:', err);
-      }
+      })();
     }
   } else {
     console.log('[Socket.IO] ❌ No userId in auth, connection not tracked');
@@ -159,7 +175,11 @@ io.on('connection', async (socket) => {
             const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
             if (user && user.friends && user.friends.length > 0) {
               console.log(`[Socket.IO] [${now}] Notifying ${user.friends.length} friends that user ${userId} went offline`);
-              socketManager.notifyUserOffline(userId, user.friends);
+              // Broadcast to the status-updates room (all connected users)
+              io.to('status-updates').emit('user-offline', {
+                userId: userId,
+                username: user.username
+              });
             }
           } catch (err) {
             console.error('[Socket.IO] Error notifying friends on disconnect:', err);
@@ -179,7 +199,7 @@ io.on('connection', async (socket) => {
 });
 
 // Export io instance and userSockets mapping for use in controllers
-socketManager.setSocketIO(io, userSockets);
+socketManager.setSocketIO(io, userSocketsMultiple);
 
 module.exports = { httpServer, io, userSockets, userSocketsMultiple };
 

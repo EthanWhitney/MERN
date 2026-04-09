@@ -1,11 +1,14 @@
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
+let connectionState = 0; // Counter to trigger useEffect refetch on reconnect
 
 const getSocketUrl = () => {
   const isDev = window.location.hostname === 'localhost';
   return isDev ? 'http://localhost:5000' : window.location.origin;
 };
+
+export const getConnectionState = () => connectionState;
 
 export const initSocket = (userId: string) => {
   if (socket?.connected) {
@@ -23,12 +26,21 @@ export const initSocket = (userId: string) => {
   });
 
   socket.on('connect', () => {
+    console.log('[socketService] Socket connected');
+    connectionState++; // Increment to trigger useEffect refetch
   });
 
   socket.on('disconnect', () => {
+    console.log('[socketService] Socket disconnected');
+  });
+
+  socket.on('reconnect', () => {
+    console.log('[socketService] Socket reconnected');
+    connectionState++; // Increment to trigger useEffect refetch
   });
 
   socket.on('connect_error', (_error) => {
+    console.error('[socketService] Connection error:', _error);
   });
 
   return socket;
@@ -112,11 +124,13 @@ export const onUserOnline = (callback: (data: any) => void) => {
     console.warn('[socketService] Socket not initialized when registering onUserOnline');
     return;
   }
+  console.log('[socketService] Registering onUserOnline listener, socket connected:', socket.connected);
   socket.on('user-online', callback);
 };
 
 export const offUserOnline = (callback: (data: any) => void) => {
   if (!socket) return;
+  console.log('[socketService] Unregistering onUserOnline listener');
   socket.off('user-online', callback);
 };
 
@@ -125,10 +139,12 @@ export const onUserOffline = (callback: (data: any) => void) => {
     console.warn('[socketService] Socket not initialized when registering onUserOffline');
     return;
   }
+  console.log('[socketService] Registering onUserOffline listener, socket connected:', socket.connected);
   socket.on('user-offline', callback);
 };
 
 export const offUserOffline = (callback: (data: any) => void) => {
   if (!socket) return;
+  console.log('[socketService] Unregistering onUserOffline listener');
   socket.off('user-offline', callback);
 };

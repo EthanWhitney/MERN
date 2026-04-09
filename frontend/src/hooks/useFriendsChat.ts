@@ -15,7 +15,8 @@ import {
   onUserOnline,
   offUserOnline,
   onUserOffline,
-  offUserOffline
+  offUserOffline,
+  getConnectionState
 } from '../services/socketService';
 
 interface Friend {
@@ -169,16 +170,13 @@ export const useFriendsChat = (recipientId?: string) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      onFriendRequestReceived(handleFriendRequestReceived);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestReceived(handleFriendRequestReceived);
 
     return () => {
-      clearTimeout(timeout);
       offFriendRequestReceived(handleFriendRequestReceived);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
 
   // Listen for friend request accepted notifications
   useEffect(() => {
@@ -190,16 +188,13 @@ export const useFriendsChat = (recipientId?: string) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      onFriendRequestAccepted(handleFriendRequestAccepted);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestAccepted(handleFriendRequestAccepted);
 
     return () => {
-      clearTimeout(timeout);
       offFriendRequestAccepted(handleFriendRequestAccepted);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
 
   // Listen for friend request declined notifications
   useEffect(() => {
@@ -211,16 +206,13 @@ export const useFriendsChat = (recipientId?: string) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      onFriendRequestDeclined(handleFriendRequestDeclined);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestDeclined(handleFriendRequestDeclined);
 
     return () => {
-      clearTimeout(timeout);
       offFriendRequestDeclined(handleFriendRequestDeclined);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
 
   // Listen for user online notifications
   useEffect(() => {
@@ -248,16 +240,13 @@ export const useFriendsChat = (recipientId?: string) => {
       }
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      onUserOnline(handleUserOnline);
-    }, 100);
+    // Register listener immediately (no delay)
+    onUserOnline(handleUserOnline);
 
     return () => {
-      clearTimeout(timeout);
       offUserOnline(handleUserOnline);
     };
-  }, [userId, selectedFriend]);
+  }, [userId, selectedFriend, getConnectionState()]);
 
   // Listen for user offline notifications
   useEffect(() => {
@@ -285,16 +274,13 @@ export const useFriendsChat = (recipientId?: string) => {
       }
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      onUserOffline(handleUserOffline);
-    }, 100);
+    // Register listener immediately (no delay)
+    onUserOffline(handleUserOffline);
 
     return () => {
-      clearTimeout(timeout);
       offUserOffline(handleUserOffline);
     };
-  }, [userId, selectedFriend]);
+  }, [userId, selectedFriend, getConnectionState()]);
 
   // Load messages when friend is selected and set up real-time listener
   // Uses recipientId param if provided, otherwise uses selectedFriend state
@@ -366,7 +352,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offReceiveMessage(handleReceiveMessage);
     };
-  }, []);
+  }, [getConnectionState()]);
 
   // Send message
   const sendMessage = async (messageInput: string): Promise<boolean> => {
