@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import CardPage from './pages/CardPage';
 import ChatPage from './pages/ChatPage';
 import FriendsPage from './pages/FriendsPage';
+import ServerPage from './pages/ServerPage';
 import { isTokenValid } from './utils/tokenStorage';
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
@@ -31,6 +32,7 @@ function App() {
         <Route path="/friends/:friendId" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>
         <Route path="/cards" element={<ProtectedRoute><CardPage/></ProtectedRoute>}/>
         <Route path="/chat" element={<ProtectedRoute><ChatPage/></ProtectedRoute>}/>
+        <Route path="/chat/server/:serverId" element={<ProtectedRoute><ServerPage/></ProtectedRoute>}/>
         <Route path="/chat/server/:serverId/channel/:channelId" element={<ProtectedRoute><ChatPage/></ProtectedRoute>}/>
         <Route path="/chat/dm/:recieverId" element={<ProtectedRoute><ChatPage/></ProtectedRoute>}/>
         <Route path="*" element={<Navigate to="/" replace />}/>

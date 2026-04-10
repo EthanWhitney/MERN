@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { verifyToken } = require('../middleware/tokenMiddleware');
 
 const {
   createServer,
@@ -43,17 +44,14 @@ const {
 } = require('../controllers/textChannelsController');
 
 // server crud
-router.post('/', createServer);
-router.get('/:serverId', getServer);
-router.patch('/:serverId', updateServer);
-router.delete('/:serverId', deleteServer);
-
-// text channels
-router.post('/:serverId/textChannels', createTextChannel);
+router.post('/', verifyToken, createServer);
+router.get('/:serverId', verifyToken, getServer);
+router.patch('/:serverId', verifyToken, updateServer);
+router.delete('/:serverId', verifyToken, deleteServer);
 
 // server membership
-router.post('/:serverId/join', joinServer);
-router.delete('/:serverId/leave', leaveServer);
+router.post('/:serverId/join', verifyToken, joinServer);
+router.delete('/:serverId/leave', verifyToken, leaveServer);
 router.get('/:serverId/members', getServerMembers);
 
 // ── NEW: enriched profiles & real-time online status ──────────────────────────

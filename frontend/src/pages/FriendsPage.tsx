@@ -4,6 +4,7 @@ import './FriendsPage.css';
 import { authFetch } from '../utils/authFetch';
 import FriendsPanel from '../components/FriendsPanel';
 import FriendsChat from '../components/FriendsChat';
+import ServerList from '../components/ServerList';
 
 interface Friend {
   _id: string;
@@ -80,6 +81,7 @@ const FriendsPage = () => {
   return (
     <div className="friends-screen">
       <div className="friends-glow" aria-hidden="true" />
+      <ServerList />
       <FriendsPanel 
         selectedFriend={selectedFriend} 
         onSelectFriend={handleSelectFriend}

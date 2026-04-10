@@ -31,11 +31,17 @@ exports.verifyToken = (req, res, next) => {
     }
 
     // Attach user info to request
+    req.user = {
+      userId: verifiedPayload.userId,
+      email: verifiedPayload.email,
+      username: verifiedPayload.username
+    };
+    // Also set directly for backwards compatibility
     req.userId = verifiedPayload.userId;
     req.email = verifiedPayload.email;
     req.username = verifiedPayload.username;
 
-    console.log('Token verified for userId:', req.userId);
+    console.log('Token verified for userId:', req.user.userId);
 
     // Refresh token
     const refreshed = jwtManager.refresh(jwtToken);
