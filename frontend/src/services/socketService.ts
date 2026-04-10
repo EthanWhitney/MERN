@@ -147,7 +147,7 @@ export const leaveServerChannel = (serverId: string, channelId: string) => {
   
   if (socket?.connected) {
     socket.emit('leave-server-channel', { serverId, channelId });
-    console.log(`[socketService] ✅ Emitted leave-server-channel: ${serverId}/${channelId}`);
+    console.log(`[socketService]  Emitted leave-server-channel: ${serverId}/${channelId}`);
   } else {
     console.warn(`[socketService] ⚠️ Socket not connected when trying to leave channel`);
   }
