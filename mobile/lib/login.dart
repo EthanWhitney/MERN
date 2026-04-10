@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/api_service.dart'; // Adjust path based on your folder structure
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:mobile/api_service.dart'; 
 import 'register_page.dart';
 import 'home_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,38 +18,49 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _loginController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  void _doLogin() async {
+  Future<void> doLogin() async {
     try {
-      print("Attempting to login with: ${_loginController.text}"); // Debug
-      
-      var result = await ApiService.login(_loginController.text, _passwordController.text);
-      
-      print("Server Response: $result"); // Debug
+      final res = await ApiService.login(
+        _loginController.text,
+        _passwordController.text,
+      );
 
-      if (!mounted) return; // Safety check for Flutter
+      // 1. Handle Errors from API
+      if (res['error'] != null && res['error'].toString().isNotEmpty) {
+        _showError(res['error']);
+        return;
+      }
 
-      if (result.containsKey('error') && result['error'] != null && result['error'].isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['error']), backgroundColor: Colors.red),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Login Successful! Welcome to Syncord.")),
-        );
-        
-        // Move to next screen
-        Navigator.pushReplacement(
+      // 2. Extract data returned from the API service
+      String userId = res['userId']?.toString() ?? '';
+      String username = res['username'] ?? '';
+
+      if (userId.isEmpty) {
+        _showError('Login failed: Invalid User Data');
+        return;
+      }
+
+      // 3. Navigate - Data is already saved by ApiService.login
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => HomePage(username: _loginController.text),
+          builder: (context) => HomePage(
+            username: username,
+            userId: userId,
+          ),
         ),
-    );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Connection failed. Is the backend running?")),
       );
+    } catch (e) {
+      _showError("An unexpected error occurred.");
     }
+  }
+
+  // Helper to show the SnackBar
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -109,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
 
                 // The Login Button
                 ElevatedButton(
-                  onPressed: _doLogin,
+                  onPressed: doLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF374151),
                     padding: const EdgeInsets.symmetric(vertical: 16),
