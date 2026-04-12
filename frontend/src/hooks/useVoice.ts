@@ -54,15 +54,16 @@ export const useVoice = (channelId: string, userId: string) => {
         return;
       }
 
-      // con to socket server
       const socket = getSocket() || initSocket(userId);
       socketRef.current = socket;
 
-      socket.on('connect', () => {
+      if (socket.connected) {
         socket.emit('join-voice', { channelId, userId });
-      });
-
-      // signal listeners
+      } else {
+        socket.on('connect', () => {
+          socket.emit('join-voice', { channelId, userId });
+        });
+      }
       socket.on('existing-peers', async ({ peers }: { peers: Peer[] }) => {
         if (!localStreamRef.current) return;
         
