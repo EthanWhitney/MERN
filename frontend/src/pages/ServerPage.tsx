@@ -31,7 +31,29 @@ const ServerPage = () => {
   const [showServerMenu, setShowServerMenu] = useState(false);
   const [serverProfiles, setServerProfiles] = useState<any[]>([]);
   const [activeVoiceChannel, setActiveVoiceChannel] = useState<{id: string, name: string} | null>(null);
+  const [showCreateVoiceModal, setShowCreateVoiceModal] = useState(false);
+  const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
+  const [isCreatingVoice, setIsCreatingVoice] = useState(false);
 
+  const handleCreateVoiceChannel = async () => {
+    if (!newVoiceChannelName.trim() || !serverId) return;
+    try {
+      setIsCreatingVoice(true);
+      await fetch(`http://localhost:5000/api/servers/${serverId}/voiceChannels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelName: newVoiceChannelName.trim() }),
+      });
+      setNewVoiceChannelName('');
+      setShowCreateVoiceModal(false);
+      await loadServer(serverId);
+    } catch (err) {
+      console.error('Failed to create voice channel:', err);
+    } finally {
+      setIsCreatingVoice(false);
+    }
+  };
+  
   // Use chat thread hook for the selected channel from URL
   const {
     messages,
@@ -372,42 +394,61 @@ const ServerPage = () => {
         {/* Voice Channels */}
         <div className="channel-section">
           <div className="channel-section-header">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />
-            </svg>
-            <span>VOICE CHANNELS</span>
+            <div className="channel-section-title">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16.59 8.59L12 13.17L7.41 8.59L6 10L12 16L18 10L16.59 8.59Z" />
+              </svg>
+              <span>VOICE CHANNELS</span>
+            </div>
+            {isOwner && (
+              <button
+                className="add-channel-btn"
+                onClick={() => setShowCreateVoiceModal(true)}
+                title="Create Voice Channel"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 11.1111H12.8889V4H11.1111V11.1111H4V12.8889H11.1111V20H12.8889V12.8889H20V11.1111Z" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="channel-list">
             {server.voiceChannels && server.voiceChannels.length > 0 ? (
               server.voiceChannels.map((channel: any) => (
-                <div 
-                  key={channel._id} 
+                <div
+                  key={channel._id}
                   className={`channel-item voice-channel ${activeVoiceChannel?.id === channel._id ? 'active' : ''}`}
                   onClick={() => {
-                  console.log('Voice channel clicked:', channel._id, channel.name);
-                  setActiveVoiceChannel({ id: channel._id, name: channel.name });
-                }}
+                    console.log('Voice channel clicked:', channel._id, channel.name);
+                    setActiveVoiceChannel({ id: channel._id, name: channel.name });
+                  }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C10.34 3 9 4.37 9 6.07V11.93C9 13.63 10.34 15 12 15C13.66 15 15 13.63 15 11.93V6.07C15 4.37 13.66 3 12 3ZM18.5 11C18.5 11 18.5 11.93 18.5 11.93C18.5 15.23 15.86 17.93 12.5 18V21H11V18C7.64 17.93 5 15.23 5 11.93V11H6.5V11.93C6.5 14.41 8.52 16.43 11 16.43H13C15.48 16.43 17.5 14.41 17.5 11.93V11H18.5Z" />
                   </svg>
-                  <span>{channel.name}</span>
+                  <span>{channel.channelName || channel.name}</span>
                 </div>
               ))
             ) : (
               <div className="channel-item voice-channel channel-empty">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 3C10.34 3 9 4.37 9 6.07V11.93C9 13.63 10.34 15 12 15C13.66 15 15 13.63 15 11.93V6.07C15 4.37 13.66 3 12 3ZM18.5 11C18.5 11 18.5 11.93 18.5 11.93C18.5 15.23 15.86 17.93 12.5 18V21H11V18C7.64 17.93 5 15.23 5 11.93V11H6.5V11.93C6.5 14.41 8.52 16.43 11 16.43H13C15.48 16.43 17.5 14.41 17.5 11.93V11H18.5Z" />
-                </svg>
-                <span>General</span>
+                <span>No voice channels</span>
               </div>
             )}
-        </div>
           </div>
         </div>
-
-        <UserControls isServerPage={true} serverId={serverId} serverProfiles={serverProfiles} onProfileUpdate={() => serverId && loadServerProfiles(serverId)} />
       </div>
+
+      {activeVoiceChannel && (
+        <VoiceChannel
+          channelId={activeVoiceChannel.id}
+          channelName={activeVoiceChannel.name}
+          currentUserId={currentUserId}
+          onLeave={() => setActiveVoiceChannel(null)}
+        />
+      )}
+
+      <UserControls isServerPage={true} serverId={serverId} serverProfiles={serverProfiles} onProfileUpdate={() => serverId && loadServerProfiles(serverId)} />
+      </div> 
 
       {/* Main Chat Area */}
       <div className="server-chat-area">
@@ -422,13 +463,6 @@ const ServerPage = () => {
         </div>
 
         <div className="server-messages">
-          {activeVoiceChannel && (
-            <VoiceChannel
-              channelId={activeVoiceChannel.id}
-              channelName={activeVoiceChannel.name}
-              currentUserId={currentUserId}
-            />
-          )}
           {channelId ? (
             <>
               {messagesLoading && <p className="server-loading">Loading messages...</p>}
@@ -623,6 +657,36 @@ const ServerPage = () => {
           onClose={() => setShowInviteLinksPanel(false)}
         />
       )}
+
+      {showCreateVoiceModal && (
+      <div className="delete-modal-overlay" onClick={() => setShowCreateVoiceModal(false)}>
+        <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="delete-modal-header">
+            <h2>Create Voice Channel</h2>
+          </div>
+          <div className="delete-modal-body">
+            <input
+              type="text"
+              placeholder="Channel name"
+              value={newVoiceChannelName}
+              onChange={(e) => setNewVoiceChannelName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateVoiceChannel()}
+              autoFocus
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #444', background: '#1e1f22', color: 'white' }}
+            />
+          </div>
+          <div className="delete-modal-footer">
+            <button className="btn-cancel-delete" onClick={() => setShowCreateVoiceModal(false)} disabled={isCreatingVoice}>
+              Cancel
+            </button>
+            <button className="btn-confirm-delete" onClick={handleCreateVoiceChannel} disabled={isCreatingVoice || !newVoiceChannelName.trim()}
+              style={{ backgroundColor: '#5865f2' }}>
+              {isCreatingVoice ? 'Creating...' : 'Create Channel'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };
