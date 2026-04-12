@@ -96,10 +96,13 @@ const ServerPage = () => {
       const response = await fetch(`/api/servers/${id}/members/profiles`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Server profiles loaded:', data);
         setServerProfiles(data.members || []);
+      } else {
+        console.error('Failed to load server profiles:', response.status, response.statusText);
       }
     } catch (err) {
-      // Silently fail - profiles are optional
+      console.error('Error loading server profiles:', err);
     }
   }, []);
 
@@ -108,8 +111,11 @@ const ServerPage = () => {
   }, [navigate]);
 
   const getMemberStatus = useCallback((member: any): MemberStatus => {
+    // Check isOnline first (new flag from API)
+    if (member?.isOnline === true) return 'online';
+    // Then check status field
     const raw = (member?.status || member?.presence || member?.state || '').toString().toLowerCase();
-    if (raw === 'online' || member?.online === true || member?.isOnline === true) return 'online';
+    if (raw === 'online') return 'online';
     if (raw === 'idle') return 'idle';
     if (raw === 'dnd' || raw === 'do_not_disturb' || raw === 'donotdisturb') return 'dnd';
     return 'offline';
@@ -518,7 +524,9 @@ const ServerPage = () => {
                   title={role}
                 >
                   <div className="member-avatar" aria-hidden="true">
-                    {member?.profilePicture ? (
+                    {member?.serverProfilePicture ? (
+                      <img src={member.serverProfilePicture} alt="" />
+                    ) : member?.profilePicture ? (
                       <img src={member.profilePicture} alt="" />
                     ) : (
                       getMemberInitials(member)
@@ -551,7 +559,9 @@ const ServerPage = () => {
                   title={role}
                 >
                   <div className="member-avatar" aria-hidden="true">
-                    {member?.profilePicture ? (
+                    {member?.serverProfilePicture ? (
+                      <img src={member.serverProfilePicture} alt="" />
+                    ) : member?.profilePicture ? (
                       <img src={member.profilePicture} alt="" />
                     ) : (
                       getMemberInitials(member)

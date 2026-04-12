@@ -144,7 +144,7 @@ const getServerMembers = async (req, res) => {
 };
 
 // GET /api/servers/:serverId/members/profiles
-// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName)
+// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName, isOnline)
 const getServerMemberProfiles = async (req, res) => {
   const { serverId } = req.params;
   let error = '';
@@ -164,11 +164,11 @@ const getServerMemberProfiles = async (req, res) => {
       return res.status(200).json({ members: [], error: '' });
     }
 
-    // Enrich with user data (username, profilePicture)
+    // Enrich with user data (username, profilePicture, isOnline)
     const userIds = serverProfiles.map(p => p.userId);
     const users = await db.collection('users')
       .find({ _id: { $in: userIds } })
-      .project({ _id: 1, username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1, isOnline: 1 })
       .toArray();
 
     const userMap = {};
@@ -176,12 +176,15 @@ const getServerMemberProfiles = async (req, res) => {
 
     const members = serverProfiles.map(p => {
       const user = userMap[p.userId.toString()] || {};
+      const isOnline = user.isOnline === true;
       return {
         userId: p.userId.toString(),
         username: user.username || p.serverSpecificName || 'Unknown',
         profilePicture: user.profilePicture || '',
         serverSpecificName: p.serverSpecificName || '',
         serverProfilePicture: p.serverProfilePicture || '',
+        isOnline: isOnline,
+        status: isOnline ? 'online' : 'offline',
       };
     });
 
