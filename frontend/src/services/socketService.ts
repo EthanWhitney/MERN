@@ -7,8 +7,7 @@ let currentServerSubscription: { serverId: string; channelId: string } | null = 
 let joinListenerSetup = false; // Track if join-on-connect listener is set up
 
 const getSocketUrl = () => {
-  const isDev = window.location.hostname === 'localhost';
-  return isDev ? 'http://localhost:5000' : window.location.origin;
+  return '';
 };
 
 export const getConnectionState = () => connectionState;
