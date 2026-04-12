@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
-import './FriendsChat.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFriendsChat } from '../hooks/useFriendsChat';
-import MessageGroup from './MessageGroup';
 import { groupMessagesByUser } from '../utils/messageGrouping';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
+import './FriendsChat.css';
+import MessageGroup from './MessageGroup';
 
 interface Friend {
   _id: string;
@@ -16,10 +16,11 @@ interface FriendsChatProps {
   selectedFriend: Friend | null;
   currentUserId: string;
   activeTab: 'online' | 'all' | 'requests';
+  onTabChange: (tab: 'online' | 'all' | 'requests') => void;
   onSelectFriend?: (friend: Friend) => void;
 }
 
-const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend }: FriendsChatProps) => {
+const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, onSelectFriend }: FriendsChatProps) => {
   const {
     messages,
     loading,
@@ -117,12 +118,38 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
 
   return (
     <div className="chat-area">
+      <header className="friends-main-header">
+        <div className="friends-main-header-left">
+          <span className="friends-main-title">Friends</span>
+        </div>
+        <nav className="friends-main-tabs" aria-label="Friends tabs">
+          <button
+            className={`friends-main-tab ${activeTab === 'online' ? 'friends-main-tab-active' : ''}`}
+            type="button"
+            onClick={() => onTabChange('online')}
+          >
+            Online
+          </button>
+          <button
+            className={`friends-main-tab ${activeTab === 'all' ? 'friends-main-tab-active' : ''}`}
+            type="button"
+            onClick={() => onTabChange('all')}
+          >
+            All
+          </button>
+          <button
+            className={`friends-main-tab ${activeTab === 'requests' ? 'friends-main-tab-active' : ''}`}
+            type="button"
+            onClick={() => onTabChange('requests')}
+          >
+            Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
+          </button>
+        </nav>
+      </header>
+
       {activeTab === 'requests' ? (
         // Friend Requests View
         <section className="requests-area">
-          <div className="requests-header">
-            <h2>Friend Requests</h2>
-          </div>
           {pendingRequests.length === 0 ? (
             <div className="chat-empty">
               <p>No pending requests</p>
@@ -175,22 +202,6 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
       ) : selectedFriend ? (
         // Chat View (shows for both 'all' and 'online' tabs when friend is selected)
         <>
-          <header className="chat-header">
-            <div className="chat-friend-info">
-              <div className="chat-friend-avatar">
-                {selectedFriend.profilePicture ? (
-                  <img src={normalizeProfilePicturePath(selectedFriend.profilePicture)} alt={selectedFriend.username} />
-                ) : (
-                  <span>{(selectedFriend.username || '?')[0]}</span>
-                )}
-              </div>
-              <div className="chat-friend-details">
-                <h2>{selectedFriend.username}</h2>
-                <p className="chat-friend-status">{selectedFriend.online ? 'Online' : 'Offline'}</p>
-              </div>
-            </div>
-          </header>
-
           {loading && <p className="muted chat-thread-status">Loading chat...</p>}
           {error && <p className="error-text chat-thread-status">{error}</p>}
 
@@ -245,9 +256,6 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
       ) : activeTab === 'all' ? (
         // All Friends View
         <section className="all-friends-area">
-          <div className="all-friends-header">
-            <h2>Friends</h2>
-          </div>
           {friends.length === 0 ? (
             <div className="chat-empty">
               <p>No friends yet</p>
@@ -279,9 +287,6 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onSelectFriend 
       ) : activeTab === 'online' ? (
         // Online Friends View
         <section className="all-friends-area">
-          <div className="all-friends-header">
-            <h2>Online Friends</h2>
-          </div>
           {friends.filter(f => f.online).length === 0 ? (
             <div className="chat-empty">
               <p>No online friends</p>

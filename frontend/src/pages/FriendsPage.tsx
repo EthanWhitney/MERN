@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import './FriendsPage.css';
-import { authFetch } from '../utils/authFetch';
-import FriendsPanel from '../components/FriendsPanel';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import FriendsChat from '../components/FriendsChat';
+import FriendsPanel from '../components/FriendsPanel';
 import ServerList from '../components/ServerList';
+import { authFetch } from '../utils/authFetch';
+import './FriendsPage.css';
 
 interface Friend {
   _id: string;
@@ -78,6 +78,19 @@ const FriendsPage = () => {
     }
   };
 
+  const handleTabChange = (tab: 'online' | 'all' | 'requests') => {
+    setActiveTab(tab);
+    if (tab === 'all') {
+      setSelectedFriend(null);
+      navigate('/friends');
+    } else if (tab === 'online') {
+      setSelectedFriend(null);
+      navigate('/friends/online');
+    } else if (tab === 'requests') {
+      navigate('/friends/requests');
+    }
+  };
+
   return (
     <div className="friends-screen">
       <div className="friends-glow" aria-hidden="true" />
@@ -86,23 +99,12 @@ const FriendsPage = () => {
         selectedFriend={selectedFriend} 
         onSelectFriend={handleSelectFriend}
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'all') {
-            setSelectedFriend(null);
-            navigate('/friends');
-          } else if (tab === 'online') {
-            setSelectedFriend(null);
-            navigate('/friends/online');
-          } else if (tab === 'requests') {
-            navigate('/friends/requests');
-          }
-        }}
       />
       <FriendsChat 
         selectedFriend={selectedFriend} 
         currentUserId={currentUserId}
         activeTab={activeTab}
+        onTabChange={handleTabChange}
         onSelectFriend={handleSelectFriend}
       />
     </div>

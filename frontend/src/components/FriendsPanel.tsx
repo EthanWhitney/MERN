@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import './FriendsPanel.css';
 import { useFriendsChat } from '../hooks/useFriendsChat';
-import AddFriendModal from './AddFriendModal';
-import UserControls from './UserControls';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
+import AddFriendModal from './AddFriendModal';
+import './FriendsPanel.css';
+import UserControls from './UserControls';
 
 interface Friend {
   _id: string;
@@ -16,10 +16,9 @@ interface FriendsPanelProps {
   selectedFriend: Friend | null;
   onSelectFriend: (friend: Friend) => void;
   activeTab: 'online' | 'all' | 'requests';
-  onTabChange: (tab: 'online' | 'all' | 'requests') => void;
 }
 
-const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }: FriendsPanelProps) => {
+const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab }: FriendsPanelProps) => {
   const {
     friends,
     pendingRequests,
@@ -53,32 +52,6 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }
             </span>
             <span className="friends-title-text">Friends</span>
           </div>
-          <span className="friends-topbar-sep" aria-hidden="true">
-            •
-          </span>
-          <nav className="friends-topbar-tabs" aria-label="Friends tabs">
-            <button 
-              className={`friends-tab ${activeTab === 'online' ? 'friends-tab-active' : ''}`} 
-              type="button"
-              onClick={() => onTabChange('online')}
-            >
-              Online
-            </button>
-            <button 
-              className={`friends-tab ${activeTab === 'all' ? 'friends-tab-active' : ''}`} 
-              type="button"
-              onClick={() => onTabChange('all')}
-            >
-              All
-            </button>
-            <button 
-              className={`friends-tab ${activeTab === 'requests' ? 'friends-tab-active' : ''}`} 
-              type="button"
-              onClick={() => onTabChange('requests')}
-            >
-              Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
-            </button>
-          </nav>
         </div>
         <button className="friends-addfriend" type="button" onClick={() => setShowAddFriendModal(true)}>
           Add Friend
@@ -109,7 +82,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }
         {!loading && !error && activeTab !== 'requests' && friends.length > 0 && (
           <>
             <div style={{ paddingTop: '16px', paddingBottom: '8px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#ffffff', margin: '0 12px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#f2f3f5', margin: '0 12px' }}>
                 Friends
               </h2>
             </div>
@@ -168,8 +141,8 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, onTabChange }
                 )}
                 {friends.length > 0 && (
                   <>
-                    <div style={{ paddingTop: '16px', borderTop: '1px solid #2f3746' }}>
-                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', color: '#72767d', margin: '8px 12px 8px 12px' }}>
+                    <div style={{ paddingTop: '16px', borderTop: '1px solid #3f4147' }}>
+                      <h3 style={{ fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', color: '#949ba4', margin: '8px 12px 8px 12px' }}>
                         All Friends
                       </h3>
                     </div>

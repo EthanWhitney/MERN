@@ -4,21 +4,78 @@
 .chat-area {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  background: #2f3848;
-  border-left: 1px solid #2f3746;
+  background: #313338;
+  border-left: 1px solid #1e1f22;
   overflow: hidden;
   min-width: 0;
   font-family: 'Manrope', sans-serif;
-  color: #e6e9ee;
+  color: #dbdee1;
+}
+
+/* Server-like main header */
+.friends-main-header {
+  height: 48px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid #1e1f22;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), 0 2px 0 rgba(0, 0, 0, 0.06);
+  background: #313338;
+}
+
+.friends-main-header-left {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.friends-main-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f2f3f5;
+  line-height: 1;
+}
+
+.friends-main-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.friends-main-tab {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #b5bac1;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.friends-main-tab:hover {
+  background: #35373c;
+  color: #dbdee1;
+}
+
+.friends-main-tab-active {
+  background: #404249;
+  color: #f2f3f5;
+  border-color: #404249;
 }
 
 /* Empty State */
 .chat-empty {
   display: grid;
   place-items: center;
-  color: #9aa3b2;
+  color: #949ba4;
   font-size: 1.1rem;
-  background: #2f3848;
+  background: #313338;
   width: 100%;
   height: 100%;
 }
@@ -30,8 +87,8 @@
 /* Chat Header */
 .chat-header {
   padding: 14px 20px;
-  background: #222a37;
-  border-bottom: 1px solid #2f3746;
+  background: #313338;
+  border-bottom: 1px solid #1e1f22;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -48,10 +105,10 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #3c4658;
+  background: #404249;
   display: grid;
   place-items: center;
-  color: #dbe2ea;
+  color: #f2f3f5;
   font-weight: 600;
   overflow: hidden;
   flex-shrink: 0;
@@ -71,7 +128,7 @@
 .chat-friend-details p {
   margin: 2px 0 0;
   font-size: 0.85rem;
-  color: #9aa3b2;
+  color: #949ba4;
 }
 
 /* Messages Area */
@@ -90,29 +147,29 @@
   display: flex;
   gap: 12px;
   padding: 16px 20px;
-  background: #222a37;
-  border-top: 1px solid #2f3746;
+  background: #313338;
+  border-top: 1px solid #1e1f22;
 }
 
 .chat-input {
   flex: 1;
   height: 40px;
   border-radius: 8px;
-  border: 1px solid #2f3746;
-  background: #2a3140;
+  border: 1px solid #1e1f22;
+  background: #383a40;
   color: inherit;
   padding: 0 14px;
   font-size: 0.95rem;
 }
 
 .chat-input::placeholder {
-  color: #9aa3b2;
+  color: #949ba4;
 }
 
 .chat-input:focus {
   outline: none;
   border-color: #5865f2;
-  background: #1b202a;
+  background: #404249;
 }
 
 .chat-send {
@@ -145,31 +202,31 @@
 }
 
 .muted {
-  color: #9aa3b2;
+  color: #949ba4;
 }
 
 .error-text {
-  color: #f04747;
+  color: #ed4245;
 }
 
 /* Friend Requests View */
 .requests-area {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
   height: 100%;
-  background: #2f3848;
+  background: #313338;
 }
 
 .requests-header {
   padding: 20px;
-  background: #222a37;
-  border-bottom: 1px solid #2f3746;
+  background: #313338;
+  border-bottom: 1px solid #1e1f22;
 }
 
 .requests-header h2 {
   margin: 0;
   font-size: 1.2rem;
-  color: #dbe2ea;
+  color: #f2f3f5;
 }
 
 .requests-list {
@@ -184,15 +241,15 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #242c3a;
-  border: 1px solid #2f3746;
+  background: #2b2d31;
+  border: 1px solid #3f4147;
   border-radius: 10px;
   transition: background 200ms ease;
 }
 
 .request-item:hover {
-  background: #2f3848;
-  border-color: #3b4558;
+  background: #383a40;
+  border-color: #4b4d53;
 }
 
 .request-avatar {
@@ -200,10 +257,10 @@
   height: 40px;
   min-width: 40px;
   border-radius: 50%;
-  background: #3c4658;
+  background: #404249;
   display: grid;
   place-items: center;
-  color: #dbe2ea;
+  color: #f2f3f5;
   font-weight: 600;
   overflow: hidden;
 }
@@ -222,7 +279,7 @@
 .request-info h3 {
   margin: 0;
   font-size: 1rem;
-  color: #dbe2ea;
+  color: #dbdee1;
   font-weight: 600;
 }
 
@@ -246,8 +303,8 @@
 }
 
 .request-accept {
-  background: #35c76a;
-  color: #0b1215;
+  background: #23a559;
+  color: #ffffff;
 }
 
 .request-accept:hover {
@@ -256,7 +313,7 @@
 }
 
 .request-decline {
-  background: #f04747;
+  background: #ed4245;
   color: #f6f7ff;
 }
 
@@ -272,21 +329,21 @@
 /* All Friends View */
 .all-friends-area {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
   height: 100%;
-  background: #2f3848;
+  background: #313338;
 }
 
 .all-friends-header {
   padding: 20px;
-  background: #222a37;
-  border-bottom: 1px solid #2f3746;
+  background: #313338;
+  border-bottom: 1px solid #1e1f22;
 }
 
 .all-friends-header h2 {
   margin: 0;
   font-size: 1.2rem;
-  color: #dbe2ea;
+  color: #f2f3f5;
 }
 
 .all-friends-list {
@@ -301,15 +358,15 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #242c3a;
-  border: 1px solid #2f3746;
+  background: #2b2d31;
+  border: 1px solid #3f4147;
   border-radius: 10px;
   transition: background 200ms ease, border-color 200ms ease;
 }
 
 .friend-item:hover {
-  background: #2f3848;
-  border-color: #3b4558;
+  background: #383a40;
+  border-color: #4b4d53;
 }
 
 .friend-avatar {
@@ -317,10 +374,10 @@
   height: 40px;
   min-width: 40px;
   border-radius: 50%;
-  background: #3c4658;
+  background: #404249;
   display: grid;
   place-items: center;
-  color: #dbe2ea;
+  color: #f2f3f5;
   font-weight: 600;
   overflow: hidden;
 }
@@ -339,7 +396,7 @@
 .friend-info h3 {
   margin: 0;
   font-size: 1rem;
-  color: #dbe2ea;
+  color: #dbdee1;
   font-weight: 600;
 }
 
