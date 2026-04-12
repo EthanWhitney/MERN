@@ -70,6 +70,8 @@ const userSockets = new Map();
 // Track multiple sockets per user: userId -> Set of socketIds
 const userSocketsMultiple = new Map();
 
+const voiceRooms = {};
+
 // Socket.IO connection handling
 io.on('connection', async (socket) => {
   const userId = socket.handshake.auth.userId;
@@ -156,34 +158,70 @@ io.on('connection', async (socket) => {
     });
   });
 
-  // Handle disconnect
+  socket.on('join-voice', ({ channelId, userId: vUserId }) => {
+    socket.join(channelId);
+ 
+    if (!voiceRooms[channelId]) voiceRooms[channelId] = new Map();
+    voiceRooms[channelId].set(socket.id, vUserId);
+ 
+    const existingPeers = [];
+    voiceRooms[channelId].forEach((uid, sid) => {
+      if (sid !== socket.id) existingPeers.push({ socketId: sid, userId: uid });
+    });
+    socket.emit('existing-peers', { peers: existingPeers });
+ 
+    // tell existing users someone join
+    socket.to(channelId).emit('user-joined', {
+      socketId: socket.id,
+      userId: vUserId,
+    });
+ 
+    console.log(`[voice] ${vUserId} joined channel ${channelId}`);
+  });
+ 
+  socket.on('offer', ({ to, offer, userId: oUserId }) => {
+    io.to(to).emit('offer', { from: socket.id, userId: oUserId, offer });
+  });
+ 
+  socket.on('answer', ({ to, answer }) => {
+    io.to(to).emit('answer', { from: socket.id, answer });
+  });
+ 
+  socket.on('ice-candidate', ({ to, candidate }) => {
+    io.to(to).emit('ice-candidate', { from: socket.id, candidate });
+  });
+ 
+  socket.on('leave-voice', ({ channelId, userId: vUserId }) => {
+    socket.leave(channelId);
+    if (voiceRooms[channelId]) {
+      voiceRooms[channelId].delete(socket.id);
+      if (voiceRooms[channelId].size === 0) delete voiceRooms[channelId];
+    }
+    io.to(channelId).emit('user-left', { socketId: socket.id, userId: vUserId });
+    console.log(`[voice] ${vUserId} left channel ${channelId}`);
+  });
+ 
   socket.on('disconnect', async () => {
     if (userId) {
-      const wasTracked = userSockets.has(userId);
-      
-      // Remove this specific socket
       if (userSocketsMultiple.has(userId)) {
         userSocketsMultiple.get(userId).delete(socket.id);
         const remainingSockets = userSocketsMultiple.get(userId).size;
-        
-        // Only set online=false if this was the LAST socket for this user
+ 
         if (remainingSockets === 0) {
           userSocketsMultiple.delete(userId);
           userSockets.delete(userId);
-
-          // Notify all friends that this user went offline
+ 
           try {
             const db = client.db('discord_clone');
             const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
             if (user && user.friends && user.friends.length > 0) {
               io.to('status-updates').emit('user-offline', {
                 userId: userId,
-                username: user.username
+                username: user.username,
               });
             }
           } catch (err) {}
-
-          // Broadcast offline status to all server presence rooms
+ 
           const serverIds = socket.data?.serverIds || [];
           serverIds.forEach(sid => {
             socket.to(`server-presence:${sid}`).emit('member-offline', { userId });
@@ -193,11 +231,21 @@ io.on('connection', async (socket) => {
         userSockets.delete(userId);
       }
     }
+ 
+    for (const [channelId, members] of Object.entries(voiceRooms)) {
+      if (members.has(socket.id)) {
+        const vUserId = members.get(socket.id);
+        members.delete(socket.id);
+        if (members.size === 0) delete voiceRooms[channelId];
+        io.to(channelId).emit('user-left', { socketId: socket.id, userId: vUserId });
+      }
+    }
   });
+
 });
 
 // Export io instance and userSockets mapping for use in controllers
-socketManager.setSocketIO(io, userSocketsMultiple);
+socketManager.setSocketIO(io, userSocketsMultiple, voiceRooms);
 
 module.exports = { httpServer, io, userSockets, userSocketsMultiple };
 

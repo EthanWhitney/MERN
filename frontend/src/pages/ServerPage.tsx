@@ -11,6 +11,7 @@ import MessageList from '../components/MessageList';
 import UserControls from '../components/UserControls';
 import { useChatThread } from '../hooks/useChatThread';
 import { initSocket, joinServerChannel, leaveServerChannel } from '../services/socketService';
+import { VoiceChannel } from '../components/VoiceChannel';
 
 type MemberStatus = 'online' | 'idle' | 'dnd' | 'offline';
 
@@ -29,6 +30,7 @@ const ServerPage = () => {
   const [showInviteLinksPanel, setShowInviteLinksPanel] = useState(false);
   const [showServerMenu, setShowServerMenu] = useState(false);
   const [serverProfiles, setServerProfiles] = useState<any[]>([]);
+  const [activeVoiceChannel, setActiveVoiceChannel] = useState<{id: string, name: string} | null>(null);
 
   // Use chat thread hook for the selected channel from URL
   const {
@@ -156,10 +158,10 @@ const ServerPage = () => {
     try {
       setLoading(true);
       const serverData = await getServer(id);
+      console.log('voiceChannels from API:', serverData.voiceChannels); 
       setServer(serverData);
     } catch (err: any) {
       setError(err.message || 'Failed to load server');
-      console.error('Failed to load server:', err);
     } finally {
       setLoading(false);
     }
@@ -378,7 +380,14 @@ const ServerPage = () => {
           <div className="channel-list">
             {server.voiceChannels && server.voiceChannels.length > 0 ? (
               server.voiceChannels.map((channel: any) => (
-                <div key={channel._id} className="channel-item voice-channel">
+                <div 
+                  key={channel._id} 
+                  className={`channel-item voice-channel ${activeVoiceChannel?.id === channel._id ? 'active' : ''}`}
+                  onClick={() => {
+                  console.log('Voice channel clicked:', channel._id, channel.name);
+                  setActiveVoiceChannel({ id: channel._id, name: channel.name });
+                }}
+                >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C10.34 3 9 4.37 9 6.07V11.93C9 13.63 10.34 15 12 15C13.66 15 15 13.63 15 11.93V6.07C15 4.37 13.66 3 12 3ZM18.5 11C18.5 11 18.5 11.93 18.5 11.93C18.5 15.23 15.86 17.93 12.5 18V21H11V18C7.64 17.93 5 15.23 5 11.93V11H6.5V11.93C6.5 14.41 8.52 16.43 11 16.43H13C15.48 16.43 17.5 14.41 17.5 11.93V11H18.5Z" />
                   </svg>
@@ -413,6 +422,13 @@ const ServerPage = () => {
         </div>
 
         <div className="server-messages">
+          {activeVoiceChannel && (
+            <VoiceChannel
+              channelId={activeVoiceChannel.id}
+              channelName={activeVoiceChannel.name}
+              currentUserId={currentUserId}
+            />
+          )}
           {channelId ? (
             <>
               {messagesLoading && <p className="server-loading">Loading messages...</p>}
