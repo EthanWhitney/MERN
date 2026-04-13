@@ -29,7 +29,8 @@ const ICE_SERVERS: RTCConfiguration = {
 export const useVoice = (channelId: string, userId: string) => {
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  
+  const [remoteUsers, setRemoteUsers] = useState<Record<string, string>>({});
+
   const socketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
@@ -68,6 +69,7 @@ export const useVoice = (channelId: string, userId: string) => {
         if (!localStreamRef.current) return;
         
         for (const peer of peers) {
+          setRemoteUsers(prev => ({ ...prev, [peer.socketId]: peer.userId }));
           const pc = createPeer(peer.socketId, socket, localStreamRef.current);
           peersRef.current[peer.socketId] = pc;
           
@@ -79,6 +81,7 @@ export const useVoice = (channelId: string, userId: string) => {
 
       socket.on('user-joined', ({ socketId }: { socketId: string }) => {
         if (!localStreamRef.current) return;
+        setRemoteUsers(prev => ({ ...prev, [socketId]: userId }));
         const pc = createPeer(socketId, socket, localStreamRef.current);
         peersRef.current[socketId] = pc;
       });
@@ -107,6 +110,7 @@ export const useVoice = (channelId: string, userId: string) => {
           peersRef.current[socketId].close();
           delete peersRef.current[socketId];
         }
+        setRemoteUsers(prev => { const n = {...prev}; delete n[socketId]; return n; });
         setRemoteStreams(prev => {
           const newStreams = { ...prev };
           delete newStreams[socketId];
@@ -151,5 +155,5 @@ export const useVoice = (channelId: string, userId: string) => {
     };
   }, [channelId, userId]);
 
-  return { isConnected, remoteStreams };
+  return { isConnected, remoteStreams, remoteUsers };
 };
