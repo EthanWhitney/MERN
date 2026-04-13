@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Route, Navigate, Routes } from 'react-router-dom';
 import './App.css';
 import Token from './components/Token';
@@ -11,6 +11,7 @@ import FriendsPage from './pages/FriendsPage';
 import ServerPage from './pages/ServerPage';
 import JoinPage from './pages/JoinPage';
 import { isTokenValid } from './utils/tokenStorage';
+import { initSocket } from './utils/socketService';
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   if (!isTokenValid()) {
@@ -20,6 +21,25 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
 };
 
 function App() {
+  // Get current user ID from localStorage for socket initialization
+  const currentUserId = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('user_data');
+      if (!raw) return '';
+      return JSON.parse(raw)?.id || '';
+    } catch {
+      return '';
+    }
+  }, []);
+
+  // Initialize socket for logged-in users on app startup
+  useEffect(() => {
+    if (currentUserId && isTokenValid()) {
+      console.log('[App] Initializing socket for user:', currentUserId);
+      initSocket(currentUserId);
+    }
+  }, [currentUserId]);
+
   return (
     <Router >
       <Routes>

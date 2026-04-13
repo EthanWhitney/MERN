@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import ProfileModal from './ProfileModal';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
 import { authFetch } from '../utils/authFetch';
+import { disconnectSocket } from '../utils/socketService';
 import './LoggedInName.css';
 
 function LoggedInName() {
@@ -25,6 +26,9 @@ function LoggedInName() {
 
   function doLogout(event: any): void {
     event.preventDefault();
+    
+    // Disconnect socket
+    disconnectSocket();
     
     // Call logout API to set online=false
     authFetch('api/auth/logout', {

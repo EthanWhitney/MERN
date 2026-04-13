@@ -15,8 +15,7 @@ import {
   onUserOnline,
   offUserOnline,
   onUserOffline,
-  offUserOffline,
-  getConnectionState
+  offUserOffline
 } from '../services/socketService';
 
 interface Friend {
@@ -182,7 +181,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offFriendRequestReceived(handleFriendRequestReceived);
     };
-  }, [userId, getConnectionState()]);
+  }, [userId]);
 
   // Listen for friend request accepted notifications
   useEffect(() => {
@@ -200,7 +199,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offFriendRequestAccepted(handleFriendRequestAccepted);
     };
-  }, [userId, getConnectionState()]);
+  }, [userId]);
 
   // Listen for friend request declined notifications
   useEffect(() => {
@@ -218,7 +217,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offFriendRequestDeclined(handleFriendRequestDeclined);
     };
-  }, [userId, getConnectionState()]);
+  }, [userId]);
 
   // Listen for user online notifications
   useEffect(() => {
@@ -252,7 +251,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offUserOnline(handleUserOnline);
     };
-  }, [userId, selectedFriend, getConnectionState()]);
+  }, [userId, selectedFriend]);
 
   // Listen for user offline notifications
   useEffect(() => {
@@ -286,7 +285,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offUserOffline(handleUserOffline);
     };
-  }, [userId, selectedFriend, getConnectionState()]);
+  }, [userId, selectedFriend]);
 
   // Load messages when friend is selected and set up real-time listener
   // Uses recipientId param if provided, otherwise uses selectedFriend state
@@ -349,16 +348,19 @@ export const useFriendsChat = (recipientId?: string) => {
 
   // Listen for incoming real-time messages
   useEffect(() => {
+    console.log('[useFriendsChat] Setting up message listener');
     const handleReceiveMessage = (incomingMessage: any) => {
+      console.log('[useFriendsChat] Received DM message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
     };
 
     onReceiveMessage(handleReceiveMessage);
 
     return () => {
+      console.log('[useFriendsChat] Cleaning up message listener');
       offReceiveMessage(handleReceiveMessage);
     };
-  }, [getConnectionState()]);
+  }, []);
 
   // Send message
   const sendMessage = async (messageInput: string): Promise<boolean> => {

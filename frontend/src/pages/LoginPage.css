@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+
+/* Match the ServerPage sidebar palette + typography without changing component logic. */
+.login-page {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background: #1f232b;
+  color: #e6e9ee;
+  font-family: 'Manrope', sans-serif;
+}
+
+.login-brand {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 10px 16px 0;
+}
+
+.login-panel {
+  width: min(92vw, 420px);
+  background: #2b2d31;
+  border: 1px solid #1e1f22;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.login-logo {
+  display: block;
+  width: min(260px, 72vw);
+  height: auto;
+}
+
+/* PageTitle.tsx uses #title */
+.login-page #title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  color: #f2f3f5;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* Login.tsx structure */
+.login-page #loginDiv {
+  padding: 16px;
+  text-align: left;
+}
+
+.login-page #inner-title {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #949ba4;
+  letter-spacing: 0.5px;
+}
+
+.login-page #loginName,
+.login-page #loginPassword {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  background: #1e1f22;
+  border: 1px solid #1e1f22;
+  border-radius: 4px;
+  color: #dbdee1;
+  font-size: 15px;
+  font-family: 'Manrope', sans-serif;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+/* Prevent the password reveal affordance from changing the perceived width in some browsers. */
+.login-page #loginPassword::-ms-reveal,
+.login-page #loginPassword::-ms-clear {
+  display: none;
+}
+
+.login-page #loginName::placeholder,
+.login-page #loginPassword::placeholder {
+  color: #6d6f78;
+}
+
+.login-page #loginName:focus,
+.login-page #loginPassword:focus {
+  border-color: #5865f2;
+}
+
+.buttons,
+#loginButton {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 14px;
+  background: #5865f2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.buttons:hover,
+#loginButton:hover {
+  background: #4752c4;
+}
+
+.login-page #loginResult {
+  display: inline-block;
+  margin-top: 10px;
+  color: #ed4245;
+  min-height: 18px;
+  font-size: 13px;
+}
+
+.login-page #loginDiv a {
+  display: inline-block;
+  margin-top: 10px;
+  color: #949ba4;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.login-page #loginDiv a:hover {
+  color: #dbdee1;
+  text-decoration: underline;
+}

@@ -244,26 +244,38 @@
 }
 
 .message-composer {
-  border-top: 1px solid #232c40;
-  padding: 14px 16px 16px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  border-top: 1px solid #3f4147;
+  padding: 12px 16px 16px;
+  display: flex;
   gap: 10px;
   align-items: center;
-  background: #161c29;
+  background: #313338;
 }
 
 .message-composer input {
+  flex: 1;
   height: 44px;
-  border-radius: 12px;
-  border: 1px solid #2a3350;
-  background: #1d2434;
-  color: #edf2ff;
-  padding: 0 14px;
+  border-radius: 8px;
+  border: none;
+  background: #383a40;
+  color: #dcddde;
+  padding: 0 16px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
 }
 
 .message-composer input::placeholder {
-  color: #8994ab;
+  color: #6d6f78;
+}
+
+.message-composer input:focus {
+  background: #404249;
+}
+
+.message-composer input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .composer-actions {
@@ -272,23 +284,46 @@
   gap: 8px;
 }
 
-.composer-icon-button,
-.composer-send-button {
-  border: 0;
-  border-radius: 10px;
-  background: #222a3c;
-  color: #dce5fb;
-  min-width: 38px;
+.composer-icon-button {
+  border: none;
+  border-radius: 8px;
+  background: #2b2d31;
+  color: #b5bac1;
+  width: 38px;
   height: 38px;
   display: inline-grid;
   place-items: center;
   cursor: pointer;
+  font-size: 16px;
+  transition: background 0.15s ease;
+}
+
+.composer-icon-button:hover {
+  background: #35373c;
+  color: #dbdee1;
 }
 
 .composer-send-button {
-  padding: 0 14px;
-  background: #5e7cff;
+  padding: 0 20px;
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  background: #5865f2;
+  color: #fff;
   font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.composer-send-button:hover:not(:disabled) {
+  background: #4752c4;
+}
+
+.composer-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Responsive ────────────────────────────────────────── */
