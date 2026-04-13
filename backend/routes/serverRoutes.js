@@ -59,11 +59,11 @@ router.delete('/:serverId', verifyToken, deleteServer);
 // server membership
 router.post('/:serverId/join', verifyToken, joinServer);
 router.delete('/:serverId/leave', verifyToken, leaveServer);
-router.get('/:serverId/members', getServerMembers);
+router.get('/:serverId/members', verifyToken, getServerMembers);
 
 // ── NEW: enriched profiles & real-time online status ──────────────────────────
-router.get('/:serverId/members/profiles', getServerMemberProfiles);
-router.get('/:serverId/members/online', getOnlineMembers);
+router.get('/:serverId/members/profiles', verifyToken, getServerMemberProfiles);
+router.get('/:serverId/members/online', verifyToken, getOnlineMembers);
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.patch('/:serverId/profile/:userId', updateServerProfile);

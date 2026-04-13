@@ -4,8 +4,11 @@
 
 import { io, type Socket } from 'socket.io-client';
 
-const SOCKET_URL =
-  (import.meta as any).env?.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return 'http://localhost:5000';
+  if (window.location.hostname === 'localhost') return 'http://localhost:5000';
+  return window.location.origin;
+})();
 
 let socket: Socket | null = null;
 
@@ -16,20 +19,27 @@ let socket: Socket | null = null;
  * Safe to call multiple times — reconnects only when needed.
  */
 export const initSocket = (userId: string): Socket => {
-  if (socket && socket.connected) return socket;
+  console.log('[initSocket] Called with userId:', userId);
+  if (socket && socket.connected) {
+    console.log('[initSocket] Socket already connected, returning existing');
+    return socket;
+  }
 
   // If there's a stale socket, disconnect it cleanly before creating a new one
   if (socket) {
+    console.log('[initSocket] Disconnecting stale socket');
     socket.disconnect();
     socket = null;
   }
 
+  console.log('[initSocket] Creating new Socket.IO connection to', SOCKET_URL);
   socket = io(SOCKET_URL, {
     auth: { userId },
     autoConnect: true,
     reconnection: true,
     reconnectionDelay: 1000,
   });
+  console.log('[initSocket] Socket.IO client created, attempting connection');
 
   socket.on('connect', () => {
     console.log('[socketService] connected:', socket?.id, 'as userId:', userId);

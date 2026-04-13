@@ -58,8 +58,11 @@ const notifyUserOffline = (userId, friends) => {
 
 const broadcastMessageToServerChannel = (serverId, channelId, message) => {
   const roomId = `server-${serverId}-channel-${channelId}`;
+  console.log('[socketManager] broadcastMessageToServerChannel:', roomId, 'message:', message._id);
   if (io) {
     io.to(roomId).emit('receive-message', message);
+  } else {
+    console.warn('[socketManager] io not initialized');
   }
 };
 

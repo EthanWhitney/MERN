@@ -5,6 +5,7 @@ import { getSocket, initSocket } from '../services/socketService';
 interface Peer {
   socketId: string;
   userId: string;
+  username: string; 
 }
 
 interface OfferPayload {
@@ -30,22 +31,16 @@ export const useVoice = (channelId: string, userId: string) => {
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [isConnected, setIsConnected] = useState<boolean>(false);
   
+  const [remoteUsers, setRemoteUsers] = useState<Record<string, {userId: string, username: string}>>({});
+
   const socketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
 
   useEffect(() => {
-
-    console.log("Voice Hook Triggered. Channel:", channelId, "| User:", userId);
-
-    if (!channelId || !userId) {
-        console.warn("Aborting: Missing channelId or userId!");
-        return;
-    }
+    if (!channelId || !userId) return;
 
     const initVoice = async () => {
-        console.log("Data is good, starting microphone check...");
-      // get mic access
       try {
         localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         setIsConnected(true);
@@ -54,20 +49,26 @@ export const useVoice = (channelId: string, userId: string) => {
         return;
       }
 
+      // 1. Grab your own username
+      const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+      const myUsername = userData.username || 'Unknown';
+
       const socket = getSocket() || initSocket(userId);
       socketRef.current = socket;
 
       if (socket.connected) {
-        socket.emit('join-voice', { channelId, userId });
+        socket.emit('join-voice', { channelId, userId, username: myUsername });
       } else {
         socket.on('connect', () => {
-          socket.emit('join-voice', { channelId, userId });
+          socket.emit('join-voice', { channelId, userId, username: myUsername });
         });
       }
+
       socket.on('existing-peers', async ({ peers }: { peers: Peer[] }) => {
         if (!localStreamRef.current) return;
         
         for (const peer of peers) {
+          setRemoteUsers(prev => ({ ...prev, [peer.socketId]: { userId: peer.userId, username: peer.username } }));
           const pc = createPeer(peer.socketId, socket, localStreamRef.current);
           peersRef.current[peer.socketId] = pc;
           
@@ -77,8 +78,9 @@ export const useVoice = (channelId: string, userId: string) => {
         }
       });
 
-      socket.on('user-joined', ({ socketId }: { socketId: string }) => {
+      socket.on('user-joined', ({ socketId, userId: remoteUserId, username: remoteUsername }: { socketId: string, userId: string, username: string }) => {
         if (!localStreamRef.current) return;
+        setRemoteUsers(prev => ({ ...prev, [socketId]: { userId: remoteUserId, username: remoteUsername } })); 
         const pc = createPeer(socketId, socket, localStreamRef.current);
         peersRef.current[socketId] = pc;
       });
@@ -107,6 +109,7 @@ export const useVoice = (channelId: string, userId: string) => {
           peersRef.current[socketId].close();
           delete peersRef.current[socketId];
         }
+        setRemoteUsers(prev => { const n = {...prev}; delete n[socketId]; return n; });
         setRemoteStreams(prev => {
           const newStreams = { ...prev };
           delete newStreams[socketId];
@@ -115,10 +118,8 @@ export const useVoice = (channelId: string, userId: string) => {
       });
     };
 
-    // helper to create a new peer con
     const createPeer = (peerSocketId: string, socket: Socket, localStream: MediaStream): RTCPeerConnection => {
       const pc = new RTCPeerConnection(ICE_SERVERS);
-      
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
       pc.onicecandidate = (event) => {
@@ -128,10 +129,7 @@ export const useVoice = (channelId: string, userId: string) => {
       };
 
       pc.ontrack = (event) => {
-        setRemoteStreams(prev => ({
-          ...prev,
-          [peerSocketId]: event.streams[0]
-        }));
+        setRemoteStreams(prev => ({ ...prev, [peerSocketId]: event.streams[0] }));
       };
 
       return pc;
@@ -140,13 +138,22 @@ export const useVoice = (channelId: string, userId: string) => {
     initVoice();
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      if (socketRef.current) {
+        socketRef.current.emit('leave-voice', { channelId, userId });
+        socketRef.current.off('existing-peers');
+        socketRef.current.off('user-joined');
+        socketRef.current.off('offer');
+        socketRef.current.off('answer');
+        socketRef.current.off('ice-candidate');
+        socketRef.current.off('user-left');
+      }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
       }
       Object.values(peersRef.current).forEach(pc => pc.close());
+      peersRef.current = {};
     };
   }, [channelId, userId]);
 
-  return { isConnected, remoteStreams };
+  return { isConnected, remoteStreams, remoteUsers };
 };

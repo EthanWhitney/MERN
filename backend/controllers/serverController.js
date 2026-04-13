@@ -7,8 +7,6 @@ if (!client.topology || !client.topology.isConnected()) {
   client.connect();
 }
 
-
-
 // create new discord server
 // POST /api/servers
 const createServer = async (req, res) => {
@@ -59,6 +57,19 @@ const createServer = async (req, res) => {
 
     const result = await db.collection('servers').insertOne(newServer);
     const serverId = result.insertedId;
+
+    // Create a server profile for the owner
+    const ownerProfile = {
+      userId: ownerObjId,
+      serverId: serverId,
+      serverSpecificName: owner.username,
+      roles: [],
+      isServerMuted: false,
+      isServerDeafened: false,
+      isTimedOut: false,
+      joinedAt: new Date(),
+    };
+    await db.collection('serverProfiles').insertOne(ownerProfile);
 
     // add server to owners servers list
     await db.collection('users').updateOne(

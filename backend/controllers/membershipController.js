@@ -144,14 +144,17 @@ const getServerMembers = async (req, res) => {
 };
 
 // GET /api/servers/:serverId/members/profiles
-// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName)
+// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName, isOnline)
 const getServerMemberProfiles = async (req, res) => {
   const { serverId } = req.params;
   let error = '';
 
+  console.log('getServerMemberProfiles called with serverId:', serverId);
+
   try {
     if (!ObjectId.isValid(serverId)) {
       error = 'Invalid server ID';
+      console.error('Invalid server ID:', serverId);
       return res.status(400).json({ members: [], error });
     }
 
@@ -160,34 +163,44 @@ const getServerMemberProfiles = async (req, res) => {
       .find({ serverId: new ObjectId(serverId) })
       .toArray();
 
+    console.log('Found server profiles:', serverProfiles.length);
+
     if (serverProfiles.length === 0) {
+      console.log('No server profiles found for serverId:', serverId);
       return res.status(200).json({ members: [], error: '' });
     }
 
-    // Enrich with user data (username, profilePicture)
+    // Enrich with user data (username, profilePicture, isOnline)
     const userIds = serverProfiles.map(p => p.userId);
     const users = await db.collection('users')
       .find({ _id: { $in: userIds } })
-      .project({ _id: 1, username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1, isOnline: 1 })
       .toArray();
+
+    console.log('Found users:', users.length);
 
     const userMap = {};
     users.forEach(u => { userMap[u._id.toString()] = u; });
 
     const members = serverProfiles.map(p => {
       const user = userMap[p.userId.toString()] || {};
+      const isOnline = user.isOnline === true;
       return {
         userId: p.userId.toString(),
         username: user.username || p.serverSpecificName || 'Unknown',
         profilePicture: user.profilePicture || '',
         serverSpecificName: p.serverSpecificName || '',
         serverProfilePicture: p.serverProfilePicture || '',
+        isOnline: isOnline,
+        status: isOnline ? 'online' : 'offline',
       };
     });
 
+    console.log('Returning members:', members.length);
     return res.status(200).json({ members, error: '' });
   } catch (e) {
     error = e.toString();
+    console.error('Error in getServerMemberProfiles:', error);
     return res.status(500).json({ members: [], error });
   }
 };

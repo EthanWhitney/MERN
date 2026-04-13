@@ -14,6 +14,7 @@ interface VoiceChannelProps {
   channelName: string;
   currentUserId: string;
   onLeave: () => void;
+  serverProfiles?: any[];
 }
 
 export const VoiceChannel: React.FC<VoiceChannelProps> = ({
@@ -21,8 +22,9 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
   channelName,
   currentUserId,
   onLeave,
+  serverProfiles = [],
 }) => {
-  const { remoteStreams } = useVoice(channelId, currentUserId);
+  const { remoteStreams, remoteUsers } = useVoice(channelId, currentUserId);
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
   const myUsername = userData.username || 'Me';
 
@@ -65,27 +67,37 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
             background: '#5865f2', display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
           }}>
-            {myUsername[0].toUpperCase()}
+            {myUsername[0]?.toUpperCase() || '?'}
           </div>
           <span style={{ color: '#dbdee1', fontSize: '13px' }}>{myUsername}</span>
           <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
         </div>
 
         {/* Remote users */}
-        {Object.entries(remoteStreams).map(([socketId, stream]) => (
-          <div key={socketId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderRadius: '4px' }}>
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '50%',
-              background: '#4e5058', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
-            }}>
-              ?
+        {Object.entries(remoteStreams).map(([socketId, stream]) => {
+          const remoteUser = remoteUsers[socketId];
+          const userId = remoteUser?.userId;
+          const socketUsername = remoteUser?.username;
+          
+          const profile = serverProfiles.find(p => p.userId === userId);
+
+          const name = profile?.serverSpecificName || profile?.username || socketUsername || 'Unknown';
+          
+          return (
+            <div key={socketId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                background: '#4e5058', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
+              }}>
+                {name[0]?.toUpperCase() || '?'}
+              </div>
+              <span style={{ color: '#dbdee1', fontSize: '13px' }}>{name}</span>
+              <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
+              <AudioPlayer stream={stream} />
             </div>
-            <span style={{ color: '#dbdee1', fontSize: '13px' }}>User</span>
-            <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
-            <AudioPlayer stream={stream} />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
