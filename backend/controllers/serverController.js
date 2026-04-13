@@ -49,8 +49,8 @@ const createServer = async (req, res) => {
       serverName,
       description: description || '',
       serverIcon: '',
-      ownerId: ownerObjId,
-      members: [ownerObjId],
+      ownerId: ownerId,
+      members: [ownerId],
       roles: [],
       textChannels: [],
       voiceChannels: [],
@@ -60,11 +60,24 @@ const createServer = async (req, res) => {
     const result = await db.collection('servers').insertOne(newServer);
     const serverId = result.insertedId;
 
-    // add server to owners servers list
-    await db.collection('users').updateOne(
-      { _id: ownerObjId },
-      { $addToSet: { servers: serverId } }
-    );
+    // Add server to owner's servers list and create a serverProfile for the owner
+    // so they appear in the members sidebar without needing to "join" their own server.
+    await Promise.all([
+      db.collection('users').updateOne(
+        { _id: ownerObjId },
+        { $addToSet: { servers: serverId } }
+      ),
+      db.collection('serverProfiles').insertOne({
+        userId: ownerObjId,
+        serverId: serverId,
+        serverSpecificName: owner.username,
+        roles: [],
+        isServerMuted: false,
+        isServerDeafened: false,
+        isTimedOut: false,
+        joinedAt: new Date(),
+      }),
+    ]);
 
     return res.status(201).json({ server: { ...newServer, _id: serverId }, error: '' });
   } catch (e) {
@@ -86,71 +99,14 @@ const getServer = async (req, res) => {
     }
 
     const db = client.db('discord_clone');
-    const serverObjId = new ObjectId(serverId);
-    const server = await db.collection('servers').findOne({ _id: serverObjId });
+    const server = await db.collection('servers').findOne({ _id: new ObjectId(serverId) });
 
     if (!server) {
       error = 'Server not found';
       return res.status(404).json({ server: null, error });
     }
 
-    // Fetch full text channel details from textChannels collection
-    let textChannels = [];
-    if (server.textChannels && server.textChannels.length > 0) {
-      const channelIds = server.textChannels.map(id => 
-        typeof id === 'string' ? new ObjectId(id) : id
-      );
-      const rawTextChannels = await db.collection('textChannels')
-        .find({ _id: { $in: channelIds } })
-        .sort({ createdAt: 1 })
-        .toArray();
-      
-      // Transform channel data to match frontend expectations
-      // Map: _id stays, channelName -> name
-      textChannels = rawTextChannels.map(channel => ({
-        _id: channel._id,
-        channelID: channel._id,
-        name: channel.channelName,
-        topic: channel.topic,
-        viewRoles: channel.viewRoles || [],
-        textRoles: channel.textRoles || [],
-        createdAt: channel.createdAt,
-        serverId: channel.serverId
-      }));
-    }
-
-    // Fetch full voice channel details from voiceChannels collection
-    let voiceChannels = [];
-    if (server.voiceChannels && server.voiceChannels.length > 0) {
-      const channelIds = server.voiceChannels.map(id => 
-        typeof id === 'string' ? new ObjectId(id) : id
-      );
-      const rawVoiceChannels = await db.collection('voiceChannels')
-        .find({ _id: { $in: channelIds } })
-        .sort({ createdAt: 1 })
-        .toArray();
-      
-      // Transform channel data to match frontend expectations
-      // Map: _id stays, channelName -> name
-      voiceChannels = rawVoiceChannels.map(channel => ({
-        _id: channel._id,
-        channelID: channel._id,
-        name: channel.channelName,
-        topic: channel.topic,
-        createdAt: channel.createdAt,
-        serverId: channel.serverId
-      }));
-    }
-
-    // Return server with populated channel details
-    return res.status(200).json({ 
-      server: {
-        ...server,
-        textChannels,
-        voiceChannels
-      }, 
-      error: '' 
-    });
+    return res.status(200).json({ server, error: '' });
   } catch (e) {
     error = e.toString();
     return res.status(500).json({ server: null, error });

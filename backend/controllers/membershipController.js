@@ -144,63 +144,78 @@ const getServerMembers = async (req, res) => {
 };
 
 // GET /api/servers/:serverId/members/profiles
-// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName, isOnline)
+// Returns enriched member profiles (userId, username, profilePicture, serverSpecificName)
 const getServerMemberProfiles = async (req, res) => {
   const { serverId } = req.params;
   let error = '';
 
-  console.log('getServerMemberProfiles called with serverId:', serverId);
-
   try {
     if (!ObjectId.isValid(serverId)) {
       error = 'Invalid server ID';
-      console.error('Invalid server ID:', serverId);
       return res.status(400).json({ members: [], error });
     }
 
     const db = client.db('discord_clone');
-    const serverProfiles = await db.collection('serverProfiles')
-      .find({ serverId: new ObjectId(serverId) })
-      .toArray();
+    const [serverProfiles, server] = await Promise.all([
+      db.collection('serverProfiles')
+        .find({ serverId: new ObjectId(serverId) })
+        .toArray(),
+      db.collection('servers').findOne(
+        { _id: new ObjectId(serverId) },
+        { projection: { ownerId: 1 } }
+      ),
+    ]);
 
-    console.log('Found server profiles:', serverProfiles.length);
+    // Collect all user IDs that need enrichment, ensuring the owner is included
+    // even if they have no serverProfile (e.g. servers created before this fix).
+    const profileUserIds = serverProfiles.map(p => p.userId);
+    const ownerObjId = server?.ownerId ? new ObjectId(server.ownerId) : null;
+    const ownerAlreadyIncluded = !ownerObjId ||
+      profileUserIds.some(id => id.toString() === ownerObjId.toString());
 
-    if (serverProfiles.length === 0) {
-      console.log('No server profiles found for serverId:', serverId);
+    const allUserIds = ownerAlreadyIncluded
+      ? profileUserIds
+      : [...profileUserIds, ownerObjId];
+
+    if (allUserIds.length === 0) {
       return res.status(200).json({ members: [], error: '' });
     }
 
-    // Enrich with user data (username, profilePicture, isOnline)
-    const userIds = serverProfiles.map(p => p.userId);
     const users = await db.collection('users')
-      .find({ _id: { $in: userIds } })
-      .project({ _id: 1, username: 1, profilePicture: 1, isOnline: 1 })
+      .find({ _id: { $in: allUserIds } })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
-
-    console.log('Found users:', users.length);
 
     const userMap = {};
     users.forEach(u => { userMap[u._id.toString()] = u; });
 
+    // Build member list from serverProfiles
     const members = serverProfiles.map(p => {
       const user = userMap[p.userId.toString()] || {};
-      const isOnline = user.isOnline === true;
       return {
         userId: p.userId.toString(),
         username: user.username || p.serverSpecificName || 'Unknown',
         profilePicture: user.profilePicture || '',
         serverSpecificName: p.serverSpecificName || '',
-        serverProfilePicture: p.serverProfilePicture || '',
-        isOnline: isOnline,
-        status: isOnline ? 'online' : 'offline',
       };
     });
 
-    console.log('Returning members:', members.length);
+    // If the owner has no serverProfile, add them manually at the front
+    if (!ownerAlreadyIncluded && ownerObjId) {
+      const ownerUser = userMap[ownerObjId.toString()];
+      if (ownerUser) {
+        members.unshift({
+          userId: ownerObjId.toString(),
+          username: ownerUser.username || 'Unknown',
+          profilePicture: ownerUser.profilePicture || '',
+          serverSpecificName: '',
+        });
+      }
+    }
+
     return res.status(200).json({ members, error: '' });
   } catch (e) {
     error = e.toString();
-    console.error('Error in getServerMemberProfiles:', error);
     return res.status(500).json({ members: [], error });
   }
 };
@@ -237,7 +252,7 @@ const getOnlineMembers = async (req, res) => {
 // PATCH /api/servers/:serverId/profile/:userId
 const updateServerProfile = async (req, res) => {
   const { serverId, userId } = req.params;
-  const { serverSpecificName, serverProfilePicture, isServerMuted, isServerDeafened, isTimedOut } = req.body;
+  const { serverSpecificName, isServerMuted, isServerDeafened, isTimedOut } = req.body;
   let error = '';
 
   try {
@@ -246,48 +261,22 @@ const updateServerProfile = async (req, res) => {
       return res.status(400).json({ serverProfile: null, error });
     }
 
-    const db = client.db('discord_clone');
-    const userObjId = new ObjectId(userId);
-    const serverObjId = new ObjectId(serverId);
-
-    // Check if server profile exists
-    let existingProfile = await db.collection('serverProfiles').findOne({
-      serverId: serverObjId,
-      userId: userObjId
-    });
-
-    // If profile doesn't exist, create it
-    if (!existingProfile) {
-      const newProfile = {
-        serverId: serverObjId,
-        userId: userObjId,
-        serverSpecificName: '',
-        serverProfilePicture: '',
-        isServerMuted: false,
-        isServerDeafened: false,
-        isTimedOut: false,
-        createdAt: new Date()
-      };
-      await db.collection('serverProfiles').insertOne(newProfile);
-    }
-
-    // Now update the profile
     const updates = {};
     if (serverSpecificName !== undefined) updates.serverSpecificName = serverSpecificName;
-    if (serverProfilePicture !== undefined) updates.serverProfilePicture = serverProfilePicture;
     if (isServerMuted !== undefined) updates.isServerMuted = isServerMuted;
     if (isServerDeafened !== undefined) updates.isServerDeafened = isServerDeafened;
     if (isTimedOut !== undefined) updates.isTimedOut = isTimedOut;
 
+    const db = client.db('discord_clone');
     const result = await db.collection('serverProfiles').findOneAndUpdate(
-      { serverId: serverObjId, userId: userObjId },
+      { serverId: new ObjectId(serverId), userId: new ObjectId(userId) },
       { $set: updates },
       { returnDocument: 'after' }
     );
 
     if (!result) {
-      error = 'Failed to update server profile';
-      return res.status(500).json({ serverProfile: null, error });
+      error = 'Server profile not found';
+      return res.status(404).json({ serverProfile: null, error });
     }
 
     return res.status(200).json({ serverProfile: result, error: '' });
