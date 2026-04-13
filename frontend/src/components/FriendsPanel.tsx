@@ -16,9 +16,10 @@ interface FriendsPanelProps {
   selectedFriend: Friend | null;
   onSelectFriend: (friend: Friend) => void;
   activeTab: 'online' | 'all' | 'requests';
+  showChatOnMobile?: boolean;
 }
 
-const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab }: FriendsPanelProps) => {
+const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMobile }: FriendsPanelProps) => {
   const {
     friends,
     pendingRequests,
@@ -43,7 +44,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab }: FriendsPane
   };
 
   return (
-    <div className="friends-panel">
+    <div className={`friends-panel ${showChatOnMobile ? 'mobile-hidden' : ''}`}>
       <header className="friends-topbar">
         <div className="friends-topbar-left">
           <div className="friends-topbar-title">

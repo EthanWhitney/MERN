@@ -342,13 +342,21 @@
 }
 
 @media (max-width: 540px) {
-  .friends-panel.hidden {
+  .friends-panel.mobile-hidden {
     display: none;
   }
 
   .friends-controls {
     flex-direction: row;
     align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .friends-search {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 0.9rem;
   }
 
   .friend-card {

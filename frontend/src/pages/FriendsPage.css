@@ -18,6 +18,22 @@
   display: none;
 }
 
+/* Explicit grid positioning */
+.server-list {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.friends-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.chat-area {
+  grid-column: 3;
+  grid-row: 1;
+}
+
 /* Responsive Layout */
 @media (max-width: 1024px) {
   .friends-screen {
@@ -46,8 +62,9 @@
     z-index: 1000;
   }
 
-  .friends-panel.visible {
-    display: flex;
+  /* Must use .mobile-hidden when chat is shown */
+  .friends-panel.mobile-hidden {
+    display: none;
   }
 
   .chat-area {
@@ -57,25 +74,52 @@
 
 @media (max-width: 540px) {
   .friends-screen {
-    grid-template-columns: 1fr;
+    grid-template-columns: 72px 1fr;
   }
 
+  /* Friends panel starts hidden off-screen, slides in as drawer */
   .friends-panel {
-    max-width: 85vw;
+    position: fixed;
+    left: -280px;
+    top: 0;
+    width: 280px;
+    height: 100%;
+    z-index: 999;
+    display: flex !important;
+    flex-direction: column;
+    transition: left 0.25s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Slide panel in when showing */
+  .friends-panel:not(.mobile-hidden) {
+    left: 0;
+  }
+
+  .friends-panel.mobile-hidden {
+    left: -280px;
   }
 
   .chat-area {
-    display: none;
-  }
-
-  .chat-area.active {
     display: grid;
-    grid-column: 1;
-    grid-template-columns: 1fr;
+    grid-column: 2;
+    grid-row: 1;
   }
 
-  .friends-panel.hidden {
-    display: none;
+  .chat-area.mobile-active {
+    grid-column: 2;
+  }
+}
+
+/* Portrait orientation - maintain grid layout */
+@media (max-width: 540px) and (orientation: portrait) {
+  /* Keep grid layout consistent - no changes needed */
+  /* The .mobile-hidden and .mobile-active classes handle visibility */
+}
+
+@media (max-width: 375px) {
+  .friends-panel {
+    flex: 0 0 240px;
   }
 }
 
