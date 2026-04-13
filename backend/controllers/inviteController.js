@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const socketManager = require('../utils/socketManager');
 
 require('dotenv').config();
 
@@ -417,6 +418,15 @@ const joinViaInvite = async (req, res) => {
       // Delete personal invite after successful join
       await db.collection('serverInvites').deleteOne({ _id: linkCode });
     }
+
+    // Notify other users that a new member joined
+    socketManager.broadcastMemberJoinedServer(serverId.toString(), {
+      userId: userId,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      serverSpecificName: user.username,
+      joinedAt: serverProfile.joinedAt,
+    });
 
     return res.status(200).json({
       message: 'Successfully joined server',

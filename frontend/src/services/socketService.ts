@@ -244,3 +244,28 @@ export const offUserOffline = (callback: (data: any) => void) => {
   if (!socket) return;
   socket.off('user-offline', callback);
 };
+
+// Server member join/leave handlers
+export const onMemberJoinedServer = (callback: (data: any) => void) => {
+  if (!socket) {
+    return;
+  }
+  socket.on('member-joined-server', callback);
+};
+
+export const offMemberJoinedServer = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('member-joined-server', callback);
+};
+
+export const onMemberLeftServer = (callback: (data: any) => void) => {
+  if (!socket) {
+    return;
+  }
+  socket.on('member-left-server', callback);
+};
+
+export const offMemberLeftServer = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('member-left-server', callback);
+};
