@@ -59,7 +59,7 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://syncord.space', 'https://syncord.space'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://10.0.2.2:5000', 'http://localhost:3000', 'http://syncord.space', 'https://syncord.space'],
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -249,4 +249,10 @@ socketManager.setSocketIO(io, userSocketsMultiple, voiceRooms);
 
 module.exports = { httpServer, io, userSockets, userSocketsMultiple };
 
-httpServer.listen(5000);
+// Required for mobile emulation
+
+const PORT = process.env.PORT || 5000;
+
+httpServer.listen(prototype, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
+})
