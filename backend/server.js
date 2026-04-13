@@ -321,9 +321,5 @@ module.exports = { httpServer, io, userSockets, userSocketsMultiple };
 const PORT = process.env.PORT || 5000;
 
 httpServer.listen(prototype, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
-})
-
-httpServer.listen(prototype, '0.0.0.0', () => {
   console.log(`[SERVER] HTTP/Socket.IO server listening on port ${PORT}`);
 });
