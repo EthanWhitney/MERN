@@ -1,28 +1,30 @@
-// Socket.IO manager for emitting friend request events
 let io = null;
-let userSockets = null;
+let userSocketsMultiple = null;
+let voiceRoomsRef = null;
 
-const setSocketIO = (ioInstance, userSocketsMap) => {
+const setSocketIO = (ioInstance, userSocketsMultipleMap, voiceRooms) => {
   io = ioInstance;
-  userSockets = userSocketsMap;
+  userSocketsMultiple = userSocketsMultipleMap;
+  voiceRoomsRef = voiceRooms;
 };
 
 const getIO = () => io;
 
-const getUserSocketId = (userId) => {
-  return userSockets?.get(userId);
+const getUserSocketIds = (userId) => {
+  return userSocketsMultiple?.get(userId.toString());
+};
+
+const isUserOnline = (userId) => {
+  const sockets = getUserSocketIds(userId);
+  return sockets ? sockets.size > 0 : false;
 };
 
 const emitToUser = (userId, event, data) => {
-  const socketId = getUserSocketId(userId);
-  console.log(`[socketManager] Attempting to emit ${event} to user ${userId}`);
-  console.log(`[socketManager] Socket ID found: ${socketId ? 'YES' : 'NO'}`);
-  console.log(`[socketManager] Current userSockets mapping:`, Array.from(userSockets?.entries() || []));
-  if (socketId && io) {
-    io.to(socketId).emit(event, data);
-    console.log(`[socketManager] Successfully emitted ${event} to user ${userId} (socket: ${socketId})`);
-  } else {
-    console.log(`[socketManager] FAILED to emit ${event}: userId ${userId} not found in userSockets Map`);
+  const socketSet = getUserSocketIds(userId);
+  if (socketSet && socketSet.size > 0 && io) {
+    socketSet.forEach(socketId => {
+      io.to(socketId).emit(event, data);
+    });
   }
 };
 
@@ -38,12 +40,56 @@ const notifyFriendRequestDeclined = (userId, data) => {
   emitToUser(userId, 'friend-request-declined', data);
 };
 
+
+const notifyUserOnline = (userId, friends) => {
+  if (!friends || friends.length === 0) return;
+  friends.forEach(friendId => {
+    emitToUser(friendId, 'user-online', { userId, username: userId });
+  });
+};
+
+const notifyUserOffline = (userId, friends) => {
+  if (!friends || friends.length === 0) return;
+  friends.forEach(friendId => {
+    emitToUser(friendId, 'user-offline', { userId, username: userId });
+  });
+};
+
+
+const broadcastMessageToServerChannel = (serverId, channelId, message) => {
+  const roomId = `server-${serverId}-channel-${channelId}`;
+  if (io) {
+    io.to(roomId).emit('receive-message', message);
+  }
+};
+
+const getVoiceRoomMembers = (channelId) => {
+  if (!voiceRoomsRef || !voiceRoomsRef[channelId]) return [];
+  const members = [];
+  voiceRoomsRef[channelId].forEach((userId, socketId) => {
+    members.push({ socketId, userId });
+  });
+  return members;
+};
+
+const broadcastToVoiceChannel = (channelId, event, data) => {
+  if (io) {
+    io.to(channelId).emit(event, data);
+  }
+};
+
 module.exports = {
   setSocketIO,
   getIO,
-  getUserSocketId,
+  getUserSocketIds,
+  isUserOnline,
   emitToUser,
   notifyFriendRequest,
   notifyFriendRequestAccepted,
-  notifyFriendRequestDeclined
+  notifyFriendRequestDeclined,
+  notifyUserOnline,
+  notifyUserOffline,
+  broadcastMessageToServerChannel,
+  getVoiceRoomMembers,
+  broadcastToVoiceChannel,
 };

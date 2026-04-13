@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import './FriendsPage.css';
-import { authFetch } from '../utils/authFetch';
-import FriendsPanel from '../components/FriendsPanel';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import FriendsChat from '../components/FriendsChat';
+import FriendsPanel from '../components/FriendsPanel';
+import ServerList from '../components/ServerList';
+import { authFetch } from '../utils/authFetch';
+import './FriendsPage.css';
 
 interface Friend {
   _id: string;
   username: string;
   profilePicture?: string;
+  online?: boolean;
 }
 
 const FriendsPage = () => {
@@ -23,6 +25,8 @@ const FriendsPage = () => {
   useEffect(() => {
     if (location.pathname === '/friends/requests') {
       setActiveTab('requests');
+    } else if (location.pathname.startsWith('/friends/online')) {
+      setActiveTab('online');
     } else {
       setActiveTab('all');
     }
@@ -64,32 +68,44 @@ const FriendsPage = () => {
     }
   }, [friendId, friends]);
 
-  // When friend is selected, navigate to their URL
+  // When friend is selected, navigate to their URL and switch away from All tab
   const handleSelectFriend = (friend: Friend) => {
     setSelectedFriend(friend);
-    navigate(`/friends/${friend._id}`);
+    if (activeTab === 'online') {
+      navigate(`/friends/online/${friend._id}`);
+    } else {
+      navigate(`/friends/${friend._id}`);
+    }
+  };
+
+  const handleTabChange = (tab: 'online' | 'all' | 'requests') => {
+    setActiveTab(tab);
+    if (tab === 'all') {
+      setSelectedFriend(null);
+      navigate('/friends');
+    } else if (tab === 'online') {
+      setSelectedFriend(null);
+      navigate('/friends/online');
+    } else if (tab === 'requests') {
+      navigate('/friends/requests');
+    }
   };
 
   return (
     <div className="friends-screen">
       <div className="friends-glow" aria-hidden="true" />
+      <ServerList />
       <FriendsPanel 
         selectedFriend={selectedFriend} 
         onSelectFriend={handleSelectFriend}
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'requests') {
-            navigate('/friends/requests');
-          } else {
-            navigate('/friends');
-          }
-        }}
       />
       <FriendsChat 
         selectedFriend={selectedFriend} 
         currentUserId={currentUserId}
         activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onSelectFriend={handleSelectFriend}
       />
     </div>
   );

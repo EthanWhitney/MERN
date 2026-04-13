@@ -27,30 +27,15 @@ if (!client.topology || !client.topology.isConnected()) {
 // Send verification email
 const sendVerificationEmail = async (req, res) => {
   const { email, username, verificationCode, token } = req.body;
-  console.log('sendVerificationEmail called with:', {
-    email,
-    username,
-    codeExists: !!verificationCode,
-    tokenExists: !!token
-  });
-  console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'Set' : 'NOT SET');
 
   try {
     // Validate required fields
     if (!email || !username || (!verificationCode && !token)) {
-      console.log('Validation failed - missing fields:', {
-        email: !!email,
-        username: !!username,
-        verificationCode: !!verificationCode,
-        token: !!token
-      });
       return res.status(400).json({
         success: false,
         error: 'Email, username, and verificationCode are required'
       });
     }
-
-    console.log('About to send email to:', email);
 
     let msg;
 
@@ -67,7 +52,6 @@ const sendVerificationEmail = async (req, res) => {
       // Backward-compatible fallback for token-link verification.
       const frontendUrl = getFrontendUrl();
       const verificationLink = `${frontendUrl}/verify/${token}`;
-      console.log('Verification link:', verificationLink);
 
       msg = {
         to: email,
@@ -89,12 +73,9 @@ const sendVerificationEmail = async (req, res) => {
     // Send email using official SendGrid SDK
     await sgMail.send(msg);
     
-    console.log('Verification email sent successfully to:', email);
     return res.status(200).json({ success: true, message: 'Verification email sent successfully' });
 
   } catch (error) {
-    console.error('Error sending verification email:', error.message);
-    console.error('Full error object:', error);
     return res.status(500).json({ success: false, error: 'Failed to send verification email: ' + error.message });
   }
 };
@@ -152,7 +133,6 @@ const verifyEmail = async (req, res) => {
       }
     });
   } catch (e) {
-    console.error('Unexpected error in verifyEmail:', e);
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
   }
 };

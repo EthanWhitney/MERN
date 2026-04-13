@@ -18,6 +18,7 @@ export interface SenderProfile {
   username?: string;
   profilePicture?: string;
   serverSpecificName?: string;
+  serverSpecificPFP?: string;
 }
 
 export interface ChatMessage {
@@ -28,4 +29,10 @@ export interface ChatMessage {
   createdAt: string;
   edited: boolean;
   sender?: SenderProfile;
+  metadata?: {
+    type: string;
+    serverName?: string;
+    linkCode?: string;
+    [key: string]: any;
+  };
 }

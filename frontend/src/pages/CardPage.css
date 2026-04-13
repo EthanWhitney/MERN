@@ -1,0 +1,192 @@
+/* ─── CardPage.css ──────────────────────────────────────────────── */
+
+.app-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #313338;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ── Channel sidebar ── */
+.channel-sidebar {
+  width: 240px;
+  min-width: 240px;
+  height: 100vh;
+  background: #2b2d31;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.channel-sidebar-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid #1e1f22;
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+
+.channel-sidebar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f2f3f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channel-sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.coming-soon {
+  padding: 16px;
+  font-size: 13px;
+  color: #6d6f78;
+  line-height: 1.5;
+}
+
+/* ── User panel ── */
+.user-panel {
+  height: 52px;
+  background: #232428;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #5865F2;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f2f3f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-status {
+  font-size: 11px;
+  color: #3ba55c;
+  font-weight: 500;
+}
+
+.logout-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #b5bac1;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.logout-btn:hover {
+  background: #ed4245;
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── Main content ── */
+.main-content {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #313338;
+}
+
+.content-placeholder {
+  text-align: center;
+  color: #dcddde;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 32px;
+  max-width: 480px;
+}
+
+.content-placeholder-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #1e1f22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 900;
+  color: #72767d;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.home-placeholder {
+  color: #5865F2;
+}
+
+.content-placeholder h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #f2f3f5;
+  letter-spacing: -0.3px;
+}
+
+.content-placeholder p {
+  margin: 0;
+  font-size: 15px;
+  color: #949ba4;
+  line-height: 1.6;
+}
+
+.content-badge {
+  display: inline-block;
+  background: #1e1f22;
+  color: #72767d;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+}

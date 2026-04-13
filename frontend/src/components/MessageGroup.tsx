@@ -164,7 +164,9 @@ const MessageGroup: React.FC<MessageGroupProps> = ({
             {/* Username and Time Header - only on first message */}
             {idx === 0 && (
               <div className="message-header">
-                <span className="message-username">{senderUsername}</span>
+                <span className="message-username">
+                  {senderUsername === '[Deleted User]' ? '(deleted)' : senderUsername}
+                </span>
                 <span className="message-time">
                   {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'Just now'}
                 </span>
@@ -210,8 +212,26 @@ const MessageGroup: React.FC<MessageGroupProps> = ({
               <>
                 {/* Message Content */}
                 <div className="message-content">
-                  {msg.message}
-                  {msg.edited && <span className="message-edited">(edited)</span>}
+                  {msg.metadata?.type === 'serverInvite' && msg.metadata.linkCode ? (
+                    <div className="message-server-invite">
+                      <p className="invite-text">{msg.message}</p>
+                      <a 
+                        href={`/join/${msg.metadata.linkCode}`} 
+                        className="invite-button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          window.location.href = `/join/${msg.metadata?.linkCode}`;
+                        }}
+                      >
+                        Join Server
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      {msg.message}
+                      {msg.edited && <span className="message-edited">(edited)</span>}
+                    </>
+                  )}
                 </div>
               </>
             )}

@@ -8,6 +8,12 @@ if (!client.topology || !client.topology.isConnected()) {
   client.connect();
 }
 
+// Helper function to check if a user is online (has active socket)
+const isUserOnline = (userId) => {
+  const sockets = socketManager.getUserSocketIds(userId);
+  return sockets && sockets.size > 0;
+};
+
 // send friend req
 // POST /api/users/friends/:friendId
 const sendFriendRequest = async (req, res) => {
@@ -52,7 +58,6 @@ const sendFriendRequest = async (req, res) => {
     );
 
     // Notify recipient if they're online
-    console.log('[friendsController] Attempting to notify recipient:', friendId);
     socketManager.notifyFriendRequest(friendId, {
       fromId: senderId,
       fromUsername: sender.username,
@@ -90,15 +95,12 @@ const acceptFriendRequest = async (req, res) => {
     ]);
 
     // Notify both users about the accepted request
-    console.log('[friendsController] Notifying both users of accepted request:');
-    console.log('[friendsController] - Notifying original acceptor (userId):', userId);
     socketManager.notifyFriendRequestAccepted(userId, {
       friendId: friendId,
       friendUsername: friend.username,
       friendProfilePicture: friend.profilePicture
     });
 
-    console.log('[friendsController] - Notifying original requester (friendId):', friendId);
     socketManager.notifyFriendRequestAccepted(friendId, {
       friendId: userId,
       friendUsername: user.username,
@@ -174,11 +176,8 @@ const getFriends = async (req, res) => {
   let error = '';
 
   try {
-    console.log('getFriends called with userId:', userId);
-    
     if (!userId || !ObjectId.isValid(userId)) {
       error = 'Invalid user ID';
-      console.error('Invalid userId:', userId);
       return res.status(400).json({ friends: [], error });
     }
 
@@ -187,11 +186,8 @@ const getFriends = async (req, res) => {
 
     if (!user) {
       error = 'User not found';
-      console.error('User not found in database for userId:', userId);
       return res.status(404).json({ friends: [], error });
     }
-
-    console.log('Found user:', user.username, 'with friends:', user.friends?.length || 0);
 
     const friendIds = user.friends || [];
     const friendProfiles = await db
@@ -200,11 +196,15 @@ const getFriends = async (req, res) => {
       .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
-    console.log('Returning', friendProfiles.length, 'friends');
-    return res.status(200).json({ friends: friendProfiles, error: '' });
+    // Add online status based on socket connections
+    const friendsWithStatus = friendProfiles.map(friend => ({
+      ...friend,
+      online: isUserOnline(friend._id.toString())
+    }));
+
+    return res.status(200).json({ friends: friendsWithStatus, error: '' });
   } catch (e) {
     error = e.toString();
-    console.error('Error in getFriends:', error);
     return res.status(500).json({ friends: [], error });
   }
 };
@@ -241,7 +241,6 @@ const searchUserByUsername = async (req, res) => {
       error: '',
     });
   } catch (e) {
-    console.error('Error in searchUserByUsername:', e.toString());
     return res.status(500).json({ user: null, error: e.toString() });
   }
 };
@@ -258,13 +257,19 @@ const getPendingRequests = async (req, res) => {
     }
 
     // get the profiles for everyone who sent a request
-    const requesterIds = user.friendRequests.map(r => r.from);
+    const requesterIds =  user.friendRequests.map(r => r.from);
     const profiles = await db.collection('users')
       .find({ _id: { $in: requesterIds } })
-      .project({ username: 1, profilePicture: 1 })
+      .project({ _id: 1, username: 1, profilePicture: 1 })
       .toArray();
 
-    return res.status(200).json({ requests: profiles });
+    // Add online status based on socket connections
+    const profilesWithStatus = profiles.map(profile => ({
+      ...profile,
+      online: isUserOnline(profile._id.toString())
+    }));
+
+    return res.status(200).json({ requests: profilesWithStatus });
   } catch (e) {
     return res.status(500).json({ error: e.toString() });
   }

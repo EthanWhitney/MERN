@@ -50,7 +50,15 @@ function Login()
               localStorage.setItem('user_data', JSON.stringify(user));
 
               setMessage('');
-              window.location.href = '/friends';
+              
+              // Check if there's a redirect path (e.g., from invite link)
+              const redirectPath = localStorage.getItem('inviteRedirectPath');
+              if (redirectPath) {
+                localStorage.removeItem('inviteRedirectPath');
+                window.location.href = redirectPath;
+              } else {
+                window.location.href = '/friends';
+              }
           }
       }
       catch(error:any)

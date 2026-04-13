@@ -1,0 +1,260 @@
+.invite-links-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.invite-links-modal {
+  background: #36393f;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 500px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.invite-links-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #2c2f33;
+}
+
+.invite-links-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.invite-links-close {
+  background: none;
+  border: none;
+  color: #72767d;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 200ms;
+}
+
+.invite-links-close:hover {
+  color: #dcddde;
+}
+
+.invite-links-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.invite-links-body {
+  padding: 20px;
+  min-height: 200px;
+}
+
+.invite-links-section {
+  margin-bottom: 20px;
+}
+
+.invite-links-section:last-child {
+  margin-bottom: 0;
+}
+
+.invite-links-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 12px;
+  user-select: none;
+}
+
+.invite-links-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.invite-links-input {
+  width: 100%;
+  padding: 10px;
+  background: #2c2f33;
+  border: 1px solid #23272a;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.invite-links-input:focus {
+  outline: none;
+  border-color: #7289da;
+}
+
+.invite-links-input-small {
+  width: 60px;
+  padding: 8px;
+  background: #2c2f33;
+  border: 1px solid #23272a;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.invite-links-input-small:focus {
+  outline: none;
+  border-color: #7289da;
+}
+
+.invite-links-expiration {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #dcddde;
+  font-size: 14px;
+}
+
+.invite-links-error {
+  padding: 12px;
+  background: rgba(240, 71, 71, 0.1);
+  border: 1px solid #f04747;
+  border-radius: 4px;
+  color: #f04747;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.invite-links-success {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.invite-links-success-message {
+  margin: 0;
+  color: #43b581;
+  font-weight: 600;
+}
+
+.invite-links-label {
+  margin: 0;
+  color: #999;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.invite-links-generated {
+  padding: 12px;
+  background: #2c2f33;
+  border-radius: 4px;
+}
+
+.invite-links-display {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.invite-links-display code {
+  flex: 1;
+  padding: 10px;
+  background: #23272a;
+  border-radius: 4px;
+  color: #dcddde;
+  font-size: 12px;
+  overflow-x: auto;
+  word-break: break-all;
+}
+
+.invite-links-copy-btn {
+  padding: 10px 16px;
+  background: #7289da;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 200ms;
+}
+
+.invite-links-copy-btn:hover {
+  background: #6a7ec9;
+}
+
+.invite-links-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  border-top: 1px solid #2c2f33;
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 12px 20px;
+  background: #7289da;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 200ms;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #6a7ec9;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 12px 20px;
+  background: #40444b;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: background 200ms;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #36393f;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

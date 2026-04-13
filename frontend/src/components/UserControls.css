@@ -1,0 +1,88 @@
+.user-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  height: 52px;
+  background-color: #2c2f33;
+  border-top: 1px solid #202225;
+  gap: 12px;
+}
+
+.user-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.user-controls-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #40444b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-weight: 600;
+  color: #f2f3f5;
+}
+
+.user-controls-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-controls-username {
+  font-size: 13px;
+  font-weight: 500;
+  color: #f2f3f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-controls-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-controls-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #949ba4;
+  transition: all 0.15s ease;
+}
+
+.user-controls-btn:hover {
+  background-color: rgba(148, 155, 164, 0.1);
+  color: #f2f3f5;
+}
+
+.user-controls-btn.active {
+  color: #f2f3f5;
+  background-color: rgba(148, 155, 164, 0.2);
+}
+
+.user-controls-btn.active:hover {
+  background-color: rgba(148, 155, 164, 0.3);
+}
+
+.user-controls-mute svg,
+.user-controls-deafen svg,
+.user-controls-settings svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}

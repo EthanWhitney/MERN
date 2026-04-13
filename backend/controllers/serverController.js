@@ -12,21 +12,32 @@ if (!client.topology || !client.topology.isConnected()) {
 // create new discord server
 // POST /api/servers
 const createServer = async (req, res) => {
-  const { serverName, description, ownerId } = req.body;
+  const { serverName, description } = req.body;
+  const ownerId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
-    if (!serverName || !ownerId) {
-      error = 'serverName and ownerId are required';
+    if (!serverName) {
+      error = 'serverName is required';
       return res.status(400).json({ server: null, error });
     }
 
     const ownerObjId = toObjectId(ownerId);
     if (!ownerObjId) {
-      return res.status(400).json({ server: null, error: 'Invalid ownerId' });
+      return res.status(400).json({ server: null, error: 'Invalid user authentication' });
     }
 
     const db = client.db('discord_clone');
+
+    // Check if server name already exists
+    const existingServer = await db.collection('servers').findOne({ 
+      serverName: { $regex: new RegExp(`^${serverName}$`, 'i') } 
+    });
+    
+    if (existingServer) {
+      error = 'A server with this name already exists';
+      return res.status(409).json({ server: null, error });
+    }
 
     const owner = await db.collection('users').findOne({ _id: ownerObjId });
     if (!owner) {
@@ -38,8 +49,8 @@ const createServer = async (req, res) => {
       serverName,
       description: description || '',
       serverIcon: '',
-      ownerId: ownerId,
-      members: [ownerId],
+      ownerId: ownerObjId,
+      members: [ownerObjId],
       roles: [],
       textChannels: [],
       voiceChannels: [],
@@ -75,14 +86,71 @@ const getServer = async (req, res) => {
     }
 
     const db = client.db('discord_clone');
-    const server = await db.collection('servers').findOne({ _id: new ObjectId(serverId) });
+    const serverObjId = new ObjectId(serverId);
+    const server = await db.collection('servers').findOne({ _id: serverObjId });
 
     if (!server) {
       error = 'Server not found';
       return res.status(404).json({ server: null, error });
     }
 
-    return res.status(200).json({ server, error: '' });
+    // Fetch full text channel details from textChannels collection
+    let textChannels = [];
+    if (server.textChannels && server.textChannels.length > 0) {
+      const channelIds = server.textChannels.map(id => 
+        typeof id === 'string' ? new ObjectId(id) : id
+      );
+      const rawTextChannels = await db.collection('textChannels')
+        .find({ _id: { $in: channelIds } })
+        .sort({ createdAt: 1 })
+        .toArray();
+      
+      // Transform channel data to match frontend expectations
+      // Map: _id stays, channelName -> name
+      textChannels = rawTextChannels.map(channel => ({
+        _id: channel._id,
+        channelID: channel._id,
+        name: channel.channelName,
+        topic: channel.topic,
+        viewRoles: channel.viewRoles || [],
+        textRoles: channel.textRoles || [],
+        createdAt: channel.createdAt,
+        serverId: channel.serverId
+      }));
+    }
+
+    // Fetch full voice channel details from voiceChannels collection
+    let voiceChannels = [];
+    if (server.voiceChannels && server.voiceChannels.length > 0) {
+      const channelIds = server.voiceChannels.map(id => 
+        typeof id === 'string' ? new ObjectId(id) : id
+      );
+      const rawVoiceChannels = await db.collection('voiceChannels')
+        .find({ _id: { $in: channelIds } })
+        .sort({ createdAt: 1 })
+        .toArray();
+      
+      // Transform channel data to match frontend expectations
+      // Map: _id stays, channelName -> name
+      voiceChannels = rawVoiceChannels.map(channel => ({
+        _id: channel._id,
+        channelID: channel._id,
+        name: channel.channelName,
+        topic: channel.topic,
+        createdAt: channel.createdAt,
+        serverId: channel.serverId
+      }));
+    }
+
+    // Return server with populated channel details
+    return res.status(200).json({ 
+      server: {
+        ...server,
+        textChannels,
+        voiceChannels
+      }, 
+      error: '' 
+    });
   } catch (e) {
     error = e.toString();
     return res.status(500).json({ server: null, error });
@@ -129,6 +197,7 @@ const updateServer = async (req, res) => {
 // DELETE /api/servers/:serverId
 const deleteServer = async (req, res) => {
   const { serverId } = req.params;
+  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
@@ -144,6 +213,12 @@ const deleteServer = async (req, res) => {
     if (!server) {
       error = 'Server not found';
       return res.status(404).json({ message: '', error });
+    }
+
+    // Verify that the user is the server owner
+    if (server.ownerId !== userId) {
+      error = 'Only the server owner can delete this server';
+      return res.status(403).json({ message: '', error });
     }
 
     // remove server from all members servers array
@@ -169,9 +244,9 @@ const deleteServer = async (req, res) => {
 };
 
 // get all servers a user belongs to
-// GET /api/users/:userId/servers
+// GET /api/users/servers
 const getUserServers = async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
@@ -273,7 +348,66 @@ const createTextChannel = async (req, res) => {
   }
 };
 
-module.exports = { createServer, getServer, updateServer, deleteServer, getUserServers, createTextChannel };
+// delete a text channel from a server
+// DELETE /api/servers/:serverId/textChannels/:channelId
+const deleteTextChannel = async (req, res) => {
+  const { serverId, channelId } = req.params;
+  const { userId } = req.body;
+  let error = '';
+
+  try {
+    const serverObjId = toObjectId(serverId);
+    const channelObjId = toObjectId(channelId);
+    const userObjId = toObjectId(userId);
+
+    if (!serverObjId) {
+      error = 'Invalid server ID';
+      return res.status(400).json({ success: false, error });
+    }
+
+    if (!channelObjId) {
+      error = 'Invalid channel ID';
+      return res.status(400).json({ success: false, error });
+    }
+
+    if (!userObjId) {
+      error = 'Invalid user ID';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const db = client.db('discord_clone');
+    const server = await db.collection('servers').findOne({ _id: serverObjId });
+
+    if (!server) {
+      error = 'Server not found';
+      return res.status(404).json({ success: false, error });
+    }
+
+    const isOwner = server.ownerId && server.ownerId.toString() === userObjId.toString();
+    if (!isOwner) {
+      error = 'Only the server owner can delete channels';
+      return res.status(403).json({ success: false, error });
+    }
+
+    // Remove channel from textChannels array
+    const result = await db.collection('servers').updateOne(
+      { _id: serverObjId },
+      { $pull: { textChannels: { channelID: channelObjId } } }
+    );
+
+    if (result.modifiedCount === 0) {
+      error = 'Channel not found in server';
+      return res.status(404).json({ success: false, error });
+    }
+
+    return res.status(200).json({ success: true, error: '' });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ success: false, error });
+  }
+};
+
+module.exports = { createServer, getServer, updateServer, deleteServer, getUserServers, createTextChannel, deleteTextChannel };
 
 function toObjectId(id) {
   if (!id || !ObjectId.isValid(id)) {

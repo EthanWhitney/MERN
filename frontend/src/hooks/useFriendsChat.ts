@@ -11,13 +11,19 @@ import {
   onFriendRequestAccepted,
   offFriendRequestAccepted,
   onFriendRequestDeclined,
-  offFriendRequestDeclined
+  offFriendRequestDeclined,
+  onUserOnline,
+  offUserOnline,
+  onUserOffline,
+  offUserOffline,
+  getConnectionState
 } from '../services/socketService';
 
 interface Friend {
   _id: string;
   username: string;
   profilePicture?: string;
+  online?: boolean;
 }
 
 export interface ChatMessage {
@@ -28,6 +34,12 @@ export interface ChatMessage {
   createdAt?: string;
   edited?: boolean;
   editedAt?: string;
+  metadata?: {
+    type: string;
+    serverName?: string;
+    linkCode?: string;
+    [key: string]: any;
+  };
 }
 
 export const useFriendsChat = (recipientId?: string) => {
@@ -57,12 +69,10 @@ export const useFriendsChat = (recipientId?: string) => {
   useEffect(() => {
     if (!userId) return;
 
-    console.log('[useFriendsChat] Initializing Socket.IO for user:', userId);
-    const sock = initSocket(userId);
+    initSocket(userId);
     
     // Wait a bit for connection to establish, then log status
     const checkConnection = setTimeout(() => {
-      console.log('[useFriendsChat] Socket connection status:', sock?.connected ? 'CONNECTED' : 'NOT YET CONNECTED');
     }, 500);
 
     return () => {
@@ -83,11 +93,8 @@ export const useFriendsChat = (recipientId?: string) => {
       setError('');
 
       try {
-        console.log('Loading friends for userId:', userId);
         const response = await authFetch(`api/users/friends`);
-        
-        console.log('Friends response status:', response.status);
-        
+                
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Friends API error response:', errorText);
@@ -95,7 +102,6 @@ export const useFriendsChat = (recipientId?: string) => {
         }
 
         const payload = await response.json();
-        console.log('Friends payload:', payload);
         
         if (payload.error) {
           throw new Error(payload.error);
@@ -130,7 +136,6 @@ export const useFriendsChat = (recipientId?: string) => {
         }
 
         const payload = await response.json();
-        console.log('Pending requests:', payload.requests);
         
         setPendingRequests(payload.requests || []);
       } catch (err: any) {
@@ -164,77 +169,124 @@ export const useFriendsChat = (recipientId?: string) => {
   // Listen for friend request received notifications
   useEffect(() => {
     if (!userId) {
-      console.log('[useFriendsChat] Skipping listener registration: no userId');
       return;
     }
 
-    const handleFriendRequestReceived = (data: any) => {
-      console.log('[useFriendsChat] 📬 Friend request received event triggered:', data);
+    const handleFriendRequestReceived = (_data: any) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      console.log('[useFriendsChat] Setting up onFriendRequestReceived listener');
-      onFriendRequestReceived(handleFriendRequestReceived);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestReceived(handleFriendRequestReceived);
 
     return () => {
-      clearTimeout(timeout);
-      console.log('[useFriendsChat] Cleaning up onFriendRequestReceived listener');
       offFriendRequestReceived(handleFriendRequestReceived);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
 
   // Listen for friend request accepted notifications
   useEffect(() => {
     if (!userId) {
-      console.log('[useFriendsChat] Skipping listener registration: no userId');
       return;
     }
 
-    const handleFriendRequestAccepted = (data: any) => {
-      console.log('[useFriendsChat] ✅ Friend request accepted event triggered:', data);
+    const handleFriendRequestAccepted = (_data: any) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      console.log('[useFriendsChat] Setting up onFriendRequestAccepted listener');
-      onFriendRequestAccepted(handleFriendRequestAccepted);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestAccepted(handleFriendRequestAccepted);
 
     return () => {
-      clearTimeout(timeout);
-      console.log('[useFriendsChat] Cleaning up onFriendRequestAccepted listener');
       offFriendRequestAccepted(handleFriendRequestAccepted);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
 
   // Listen for friend request declined notifications
   useEffect(() => {
     if (!userId) {
-      console.log('[useFriendsChat] Skipping listener registration: no userId');
       return;
     }
 
-    const handleFriendRequestDeclined = (data: any) => {
-      console.log('[useFriendsChat] ❌ Friend request declined event triggered:', data);
+    const handleFriendRequestDeclined = (_data: any) => {
       reloadFriendsData();
     };
 
-    // Register listener after socket has time to connect
-    const timeout = setTimeout(() => {
-      console.log('[useFriendsChat] Setting up onFriendRequestDeclined listener');
-      onFriendRequestDeclined(handleFriendRequestDeclined);
-    }, 100);
+    // Register listener immediately (no delay)
+    onFriendRequestDeclined(handleFriendRequestDeclined);
 
     return () => {
-      clearTimeout(timeout);
-      console.log('[useFriendsChat] Cleaning up onFriendRequestDeclined listener');
       offFriendRequestDeclined(handleFriendRequestDeclined);
     };
-  }, [userId]);
+  }, [userId, getConnectionState()]);
+
+  // Listen for user online notifications
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleUserOnline = (data: any) => {
+      console.log('[useFriendsChat] User came online:', data?.userId);
+      // Update the friend in the friends array to mark as online
+      setFriends(prevFriends =>
+        prevFriends.map(friend =>
+          friend._id === data?.userId ? { ...friend, online: true } : friend
+        )
+      );
+      // Also update pending requests if this user is there
+      setPendingRequests(prevRequests =>
+        prevRequests.map(request =>
+          request._id === data?.userId ? { ...request, online: true } : request
+        )
+      );
+      // If this is the selected friend, update it too
+      if (selectedFriend && selectedFriend._id === data?.userId) {
+        setSelectedFriend({ ...selectedFriend, online: true });
+      }
+    };
+
+    // Register listener immediately (no delay)
+    onUserOnline(handleUserOnline);
+
+    return () => {
+      offUserOnline(handleUserOnline);
+    };
+  }, [userId, selectedFriend, getConnectionState()]);
+
+  // Listen for user offline notifications
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleUserOffline = (data: any) => {
+      console.log('[useFriendsChat] User went offline:', data?.userId);
+      // Update the friend in the friends array to mark as offline
+      setFriends(prevFriends =>
+        prevFriends.map(friend =>
+          friend._id === data?.userId ? { ...friend, online: false } : friend
+        )
+      );
+      // Also update pending requests if this user is there
+      setPendingRequests(prevRequests =>
+        prevRequests.map(request =>
+          request._id === data?.userId ? { ...request, online: false } : request
+        )
+      );
+      // If this is the selected friend, update it too
+      if (selectedFriend && selectedFriend._id === data?.userId) {
+        setSelectedFriend({ ...selectedFriend, online: false });
+      }
+    };
+
+    // Register listener immediately (no delay)
+    onUserOffline(handleUserOffline);
+
+    return () => {
+      offUserOffline(handleUserOffline);
+    };
+  }, [userId, selectedFriend, getConnectionState()]);
 
   // Load messages when friend is selected and set up real-time listener
   // Uses recipientId param if provided, otherwise uses selectedFriend state
@@ -298,7 +350,6 @@ export const useFriendsChat = (recipientId?: string) => {
   // Listen for incoming real-time messages
   useEffect(() => {
     const handleReceiveMessage = (incomingMessage: any) => {
-      console.log('Received real-time message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
     };
 
@@ -307,7 +358,7 @@ export const useFriendsChat = (recipientId?: string) => {
     return () => {
       offReceiveMessage(handleReceiveMessage);
     };
-  }, []);
+  }, [getConnectionState()]);
 
   // Send message
   const sendMessage = async (messageInput: string): Promise<boolean> => {
@@ -475,7 +526,6 @@ export const useFriendsChat = (recipientId?: string) => {
 
     try {
       const endpoint = `api/chat/dms/${targetId}/messages/${messageId}`;
-      console.log('Editing message:', { endpoint, newContent });
       
       const response = await authFetch(endpoint, {
         method: 'PATCH',
@@ -483,7 +533,6 @@ export const useFriendsChat = (recipientId?: string) => {
         body: JSON.stringify({ message: newContent }),
       });
 
-      console.log('Edit response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -492,7 +541,6 @@ export const useFriendsChat = (recipientId?: string) => {
       }
 
       const payload = await response.json();
-      console.log('Edit payload:', payload);
       
       if (payload.error) {
         throw new Error(payload.error);
@@ -504,7 +552,6 @@ export const useFriendsChat = (recipientId?: string) => {
       }
       return false;
     } catch (err: any) {
-      console.error('Error editing message:', err);
       return false;
     }
   };
@@ -520,13 +567,11 @@ export const useFriendsChat = (recipientId?: string) => {
 
     try {
       const endpoint = `api/chat/dms/${targetId}/messages/${messageId}`;
-      console.log('Deleting message:', { endpoint });
       
       const response = await authFetch(endpoint, {
         method: 'DELETE',
       });
 
-      console.log('Delete response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();

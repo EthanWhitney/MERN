@@ -99,9 +99,7 @@ const register = async (req, res) => {
       };
 
       await sgMail.send(msg);
-      console.log(`Verification email sent to ${email}`);
     } catch (emailError) {
-      console.error('Error sending verification email:', emailError);
       // Continue anyway - user can still enter code if they captured it
     }
 
@@ -112,7 +110,6 @@ const register = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
-    console.error('Registration error:', error);
     return res.status(500).json({ userId: null, error });
   }
 };
@@ -151,12 +148,10 @@ const login = async (req, res) => {
       
       if (unverifiedUser) {
         error = 'Account exists but email is not verified. Please check your email for the verification code.';
-        console.log(`Login attempt for unverified user: ${emailOrUsername}`);
         return res.status(401).json({ userId: null, username: '', error });
       }
       
       error = 'Invalid email/username or password';
-      console.log(`Login attempt: User not found - ${emailOrUsername}`);
       return res.status(401).json({ userId: null, username: '', error });
     }
 
@@ -165,13 +160,11 @@ const login = async (req, res) => {
 
     if (!passwordMatch) {
       error = 'Invalid email/username or password';
-      console.log(`Login attempt: Password mismatch for user - ${emailOrUsername}`);
       return res.status(401).json({ userId: null, username: '', error });
     }
 
     // Generate access + refresh tokens
     const tokenResult = jwtManager.createTokenPair(user._id.toString(), user.email, user.username);
-    console.log('Token generation result:', tokenResult);
     if (tokenResult.error) {
       error = tokenResult.error;
       return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
@@ -187,8 +180,34 @@ const login = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
-    console.error('Login error:', error);
     return res.status(500).json({ userId: null, username: '', accessToken: '', refreshToken: '', error });
+  }
+};
+
+// Logout user
+const logout = async (req, res) => {
+  const userId = req.userId;
+  let error = '';
+
+  try {
+    if (!userId) {
+      error = 'User ID not found in request';
+      return res.status(400).json({ error });
+    }
+
+    const db = client.db('discord_clone');
+
+    // Verify user exists
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Note: Online status is now managed by socket.io disconnect, not by explicit logout
+    return res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ error });
   }
 };
 
@@ -306,7 +325,6 @@ const verifyEmail = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
-    console.error('Email verification error:', error);
     return res.status(500).json({ success: false, error });
   }
 };
@@ -408,9 +426,7 @@ const resendVerificationCode = async (req, res) => {
       };
 
       await sgMail.send(msg);
-      console.log(`Verification code resent to ${unverifiedUser.email}`);
     } catch (emailError) {
-      console.error('Error sending verification email:', emailError);
       // Continue anyway - user still has new code
     }
 
@@ -422,7 +438,6 @@ const resendVerificationCode = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
-    console.error('Resend verification code error:', error);
     return res.status(500).json({ success: false, error });
   }
 };
@@ -496,7 +511,100 @@ const recoverAccount = async (req, res) => {
   }
   catch (e) {
     error = e.toString();
-    console.error('Account recovery error:', error);
+    return res.status(500).json({ success: false, error });
+  }
+};
+
+// DELETE /api/users/:userId - Delete user account and all associated data
+const deleteAccount = async (req, res) => {
+  const { userId } = req.params;
+  let error = '';
+
+  try {
+    if (!ObjectId.isValid(userId)) {
+      error = 'Invalid user ID';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const db = client.db('discord_clone');
+    const userObjId = new ObjectId(userId);
+
+    // Check if user exists
+    const user = await db.collection('users').findOne({ _id: userObjId });
+    if (!user) {
+      error = 'User not found';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // 1. Remove user from all servers (they're a member of)
+    await db.collection('servers').updateMany(
+      { members: userObjId },
+      { $pull: { members: userObjId } }
+    );
+
+    // 2. Delete all serverProfiles for this user
+    await db.collection('serverProfiles').deleteMany({ userId: userObjId });
+
+    // 3. Delete all servers owned by this user and get their IDs
+    const ownedServers = await db.collection('servers').find({ ownerId: userObjId }).toArray();
+    const ownedServerIds = ownedServers.map(s => s._id);
+    await db.collection('servers').deleteMany({ ownerId: userObjId });
+
+    // 4. Remove user from friends lists of other users
+    await db.collection('users').updateMany(
+      { friends: userObjId },
+      { $pull: { friends: userObjId } }
+    );
+
+    // 5. Remove only OWNED servers (deleted servers) from friends' user documents
+    if (ownedServerIds.length > 0) {
+      await db.collection('users').updateMany(
+        { servers: { $in: ownedServerIds } },
+        { $pull: { servers: { $in: ownedServerIds } } }
+      );
+    }
+
+    // 6. Delete all direct messages involving this user
+    await db.collection('directMessages').deleteMany({
+      $or: [
+        { senderId: userObjId },
+        { recieverId: userObjId },
+        { senderID: userObjId },
+        { recipientID: userObjId }
+      ]
+    });
+
+    // 7. Delete all friend requests involving this user
+    await db.collection('friendRequests').deleteMany({
+      $or: [
+        { senderId: userObjId },
+        { recipientId: userObjId }
+      ]
+    });
+
+    // 8. For server messages: Replace sender info with "Deleted User" instead of deleting
+    //    This preserves conversation context and message history
+    await db.collection('messages').updateMany(
+      { senderId: userObjId },
+      {
+        $set: {
+          senderId: null,
+          senderID: null,
+          sender: {
+            username: '[Deleted User]',
+            profilePicture: '',
+            _id: null
+          }
+        }
+      }
+    );
+
+    // 9. Delete the user account
+    await db.collection('users').deleteOne({ _id: userObjId });
+
+    return res.status(200).json({ success: true, error: '' });
+  } catch (e) {
+    error = e.toString();
     return res.status(500).json({ success: false, error });
   }
 };
@@ -504,9 +612,11 @@ const recoverAccount = async (req, res) => {
 module.exports = {
   register,
   login,
+  logout,
   getUserProfile,
   verifyEmail,
   resendVerificationCode,
   refreshAccessToken,
-  recoverAccount
+  recoverAccount,
+  deleteAccount
 };

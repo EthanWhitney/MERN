@@ -50,7 +50,7 @@ function VerifyCode() {
       localStorage.removeItem('pending_verification_email');
 
       setMessage('Verification successful. Redirecting...');
-      setTimeout(() => navigate('/cards'), 500);
+      setTimeout(() => navigate('/friends'), 500);
     } catch (error: any) {
       console.error('Verify code error:', error);
       setMessage('Unable to verify right now. Please try again.');

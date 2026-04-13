@@ -10,6 +10,7 @@ import {
 import type { ChatMessage, Thread } from '../types/chat';
 import { authFetch } from '../utils/authFetch';
 import { toMessage } from '../utils/chatAdapter';
+import { onReceiveMessage, offReceiveMessage, getConnectionState } from '../services/socketService';
 
 export const useChatThread = (serverId?: string, channelId?: string, recieverId?: string) => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -99,13 +100,57 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
     load();
   }, [serverId, channelId, recieverId]);
 
+  // Listen for real-time socket messages for server channels
+  useEffect(() => {
+    if (!serverId || !channelId) return;
+
+    const handleSocketMessage = (message: any) => {
+      console.log('[useChatThread] Received socket message:', message);
+
+      if (message.type === 'message-updated') {
+        // Update existing message in state
+        const messageId = message.messageId || message.message?._id || message.message?.id;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            (msg.id === messageId) ? toMessage(message.message, activeThread?.id || '') : msg
+          )
+        );
+      } else if (message.type === 'message-deleted') {
+        // Remove deleted message from state
+        setMessages((prev) => prev.filter((msg) => msg.id !== message.messageId));
+      } else {
+        // New message received - transform it to the right format
+        const msgId = message._id || message.id;
+        if (msgId && activeThread?.id) {
+          // Avoid duplicates - only add if not already in state
+          setMessages((prev) => {
+            const exists = prev.some((msg) => msg.id === msgId);
+            if (exists) {
+              console.log('[useChatThread] Message already in state, skipping duplicate');
+              return prev;
+            }
+            console.log('[useChatThread] Adding new message to state');
+            const transformedMessage = toMessage(message, activeThread.id);
+            return [...prev, transformedMessage];
+          });
+        }
+      }
+    };
+
+    onReceiveMessage(handleSocketMessage);
+
+    return () => {
+      offReceiveMessage(handleSocketMessage);
+    };
+  }, [serverId, channelId, activeThread?.id, getConnectionState()]);
+
   const sendMessage = async (content: string) => {
     if (!activeThread) {
       return;
     }
 
-    const sent = await sendMessageToThread(activeThread, content);
-    setMessages((prev) => [...prev, sent]);
+    await sendMessageToThread(activeThread, content);
+    // Don't add to state here - let the socket broadcast update all users uniformly
   };
 
   const editMessage = async (messageId: string, content: string) => {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { ChatMessage } from '../types/chat';
+import UserProfilePreview from './UserProfilePreview';
 
 type MessageListProps = {
   currentUserId: string;
@@ -9,6 +10,8 @@ type MessageListProps = {
   isLoadingMore?: boolean;
   onLoadMore?: () => Promise<void>;
   allMessagesLoaded?: boolean;
+  serverProfiles?: any[];
+  onDMClick?: (userId: string) => void;
 };
 
 type MenuState = {
@@ -22,15 +25,24 @@ type EditingState = {
   content: string;
 };
 
+type ProfilePreviewState = {
+  userId: string;
+  username: string;
+  profilePicture: string;
+  x: number;
+  y: number;
+};
+
 const MESSAGE_EDIT_WINDOW_MS = 5 * 60 * 1000;
 
-function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, isLoadingMore = false, onLoadMore, allMessagesLoaded = false }: MessageListProps) {
+function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, isLoadingMore = false, onLoadMore, allMessagesLoaded = false, serverProfiles = [], onDMClick }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [submittingMessageId, setSubmittingMessageId] = useState('');
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [showTopPopup, setShowTopPopup] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const [profilePreview, setProfilePreview] = useState<ProfilePreviewState | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const shouldPreserveScrollRef = useRef<boolean>(false);
 
@@ -90,6 +102,17 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, 
     }
   }, [isLoadingMore]);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    // Scroll to bottom if user hasn't scrolled up or this is the initial load
+    setTimeout(() => {
+      el.scrollTop = el.scrollHeight;
+    }, 0);
+  }, [messages.length]);
+
   const getAvatarSrc = (profilePicture?: string): string => {
     if (!profilePicture) {
       return '';
@@ -109,6 +132,65 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, 
       return parts[0].slice(0, 2).toUpperCase();
     }
     return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+  };
+
+  const getDisplayNameFromCache = (message: ChatMessage): string => {
+    if (serverProfiles && serverProfiles.length > 0) {
+      const senderUserId = message.sender?.userId || message.senderId;
+      const cachedProfile = serverProfiles.find((p: any) => p.userId === senderUserId);
+      if (cachedProfile?.serverSpecificName) {
+        return cachedProfile.serverSpecificName;
+      }
+      if (cachedProfile?.username) {
+        return cachedProfile.username;
+      }
+    }
+    return message.sender?.serverSpecificName || message.sender?.username || message.senderId;
+  };
+
+  const getDisplayPictureFromCache = (message: ChatMessage): string => {
+    if (serverProfiles && serverProfiles.length > 0) {
+      const senderUserId = message.sender?.userId || message.senderId;
+      const cachedProfile = serverProfiles.find((p: any) => p.userId === senderUserId);
+      if (cachedProfile?.serverProfilePicture) {
+        return cachedProfile.serverProfilePicture;
+      }
+      if (cachedProfile?.profilePicture) {
+        return cachedProfile.profilePicture;
+      }
+    }
+    return message.sender?.serverSpecificPFP || message.sender?.profilePicture || '';
+  };
+
+  const getGlobalProfile = (message: ChatMessage) => {
+    const senderUserId = message.sender?.userId || message.senderId;
+    if (serverProfiles && serverProfiles.length > 0) {
+      const cachedProfile = serverProfiles.find((p: any) => p.userId === senderUserId);
+      if (cachedProfile) {
+        return {
+          username: cachedProfile.username || 'Unknown',
+          profilePicture: cachedProfile.profilePicture || '',
+        };
+      }
+    }
+    return {
+      username: message.sender?.username || 'Unknown',
+      profilePicture: message.sender?.profilePicture || '',
+    };
+  };
+
+  const handleMessageAuthorClick = (event: React.MouseEvent, message: ChatMessage) => {
+    event.stopPropagation();
+    const senderUserId = message.sender?.userId || message.senderId;
+    const globalProfile = getGlobalProfile(message);
+    
+    setProfilePreview({
+      userId: senderUserId,
+      username: globalProfile.username,
+      profilePicture: globalProfile.profilePicture,
+      x: event.clientX,
+      y: event.clientY,
+    });
   };
 
   const isOwnMessage = (message: ChatMessage): boolean => {
@@ -263,16 +345,16 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, 
 
           <div className="message-bubble">
             {!isContinuation && (
-              <div className="message-meta">
+              <div className="message-meta" onClick={(e) => handleMessageAuthorClick(e, message)} style={{ cursor: 'pointer' }}>
                 <span className="message-inline-avatar" aria-hidden="true">
-                  {message.sender?.profilePicture ? (
-                    <img src={getAvatarSrc(message.sender.profilePicture)} alt="" />
+                  {getDisplayPictureFromCache(message) ? (
+                    <img src={getAvatarSrc(getDisplayPictureFromCache(message))} alt="" />
                   ) : (
                     <span>{getAvatarLabel(message)}</span>
                   )}
                 </span>
                 <span className="message-author">
-                  {message.sender?.serverSpecificName || message.sender?.username || message.senderId}
+                  {getDisplayNameFromCache(message)}
                 </span>
                 <span className="message-time">
                   {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -350,6 +432,19 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, 
             Delete
           </button>
         </div>
+      )}
+
+      {profilePreview && (
+        <UserProfilePreview
+          userId={profilePreview.userId}
+          username={profilePreview.username}
+          profilePicture={profilePreview.profilePicture}
+          x={profilePreview.x}
+          y={profilePreview.y}
+          onClose={() => setProfilePreview(null)}
+          onDMClick={onDMClick}
+          currentUserId={currentUserId}
+        />
       )}
     </div>
     </div>

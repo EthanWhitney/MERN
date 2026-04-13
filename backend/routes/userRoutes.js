@@ -10,6 +10,7 @@ const {
   searchUserByUsername,
   getPendingRequests 
 } = require('../controllers/friendsController');
+const { deleteAccount } = require('../controllers/authController');
 
 // search user by username
 // GET /api/users/search?username=xxx
@@ -38,5 +39,9 @@ router.post('/friends/:friendId/accept', verifyToken, acceptFriendRequest);
 // remove friend or decline/cancel request
 // DELETE /api/users/friends/:friendId
 router.delete('/friends/:friendId', verifyToken, removeFriend);
+
+// delete user account
+// DELETE /api/users/:userId
+router.delete('/:userId', verifyToken, deleteAccount);
 
 module.exports = router;
