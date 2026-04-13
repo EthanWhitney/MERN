@@ -77,7 +77,7 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
         {/* Remote users */}
       {Object.entries(remoteStreams).map(([socketId, stream]) => {
         const userId = remoteUsers[socketId];
-        console.log("DEBUG VOICE MATCH:", { lookingForId: userId, profilesAvailable: serverProfiles });
+        console.log("DEBUG JSON:", JSON.stringify({ lookingFor: userId, firstUser: serverProfiles[0] }, null, 2));
         const profile = serverProfiles.find(p => 
           p._id === userId || 
           p.id === userId || 
