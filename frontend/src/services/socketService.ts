@@ -7,13 +7,9 @@ let currentServerSubscription: { serverId: string; channelId: string } | null = 
 let joinListenerSetup = false; // Track if join-on-connect listener is set up
 
 const getSocketUrl = () => {
-  // Connect to backend on port 5000
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const port = 5000;
-    return `http://${hostname}:${port}`;
-  }
-  return 'http://localhost:5000';
+  if (typeof window === 'undefined') return 'http://localhost:5000';
+  if (window.location.hostname === 'localhost') return 'http://localhost:5000';
+  return window.location.origin; 
 };
 
 export const getConnectionState = () => connectionState;
