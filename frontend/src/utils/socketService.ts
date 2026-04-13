@@ -4,8 +4,11 @@
 
 import { io, type Socket } from 'socket.io-client';
 
-const SOCKET_URL =
-  (import.meta as any).env?.VITE_SOCKET_URL || 'http://localhost:5000';
+const SOCKET_URL = (() => {
+  if (typeof window === 'undefined') return 'http://localhost:5000';
+  if (window.location.hostname === 'localhost') return 'http://localhost:5000';
+  return window.location.origin;
+})();
 
 let socket: Socket | null = null;
 
