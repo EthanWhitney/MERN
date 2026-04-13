@@ -348,13 +348,16 @@ export const useFriendsChat = (recipientId?: string) => {
 
   // Listen for incoming real-time messages
   useEffect(() => {
+    console.log('[useFriendsChat] Setting up message listener');
     const handleReceiveMessage = (incomingMessage: any) => {
+      console.log('[useFriendsChat] Received DM message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
     };
 
     onReceiveMessage(handleReceiveMessage);
 
     return () => {
+      console.log('[useFriendsChat] Cleaning up message listener');
       offReceiveMessage(handleReceiveMessage);
     };
   }, []);

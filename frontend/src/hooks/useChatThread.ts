@@ -104,6 +104,8 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
   useEffect(() => {
     if (!serverId || !channelId) return;
 
+    console.log('[useChatThread] Setting up socket listener for channel:', serverId, channelId);
+
     const handleSocketMessage = (message: any) => {
       console.log('[useChatThread] Received socket message:', message);
 
@@ -140,6 +142,7 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
     onReceiveMessage(handleSocketMessage);
 
     return () => {
+      console.log('[useChatThread] Cleaning up socket listener');
       offReceiveMessage(handleSocketMessage);
     };
   }, [serverId, channelId, activeThread?.id]);

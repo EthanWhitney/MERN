@@ -169,14 +169,17 @@ const ServerPage = () => {
   useEffect(() => {
     if (!currentUserId) return;
 
+    console.log('[ServerPage] Initializing socket for user:', currentUserId);
     // Initialize socket connection
     initSocket(currentUserId);
 
     // Join/leave server channel when channelId changes
     if (channelId && serverId) {
+      console.log('[ServerPage] Joining server channel:', serverId, channelId);
       joinServerChannel(serverId, channelId);
 
       return () => {
+        console.log('[ServerPage] Leaving server channel:', serverId, channelId);
         leaveServerChannel(serverId, channelId);
       };
     }

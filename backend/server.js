@@ -175,6 +175,7 @@ io.on('connection', async (socket) => {
   socket.on('join-server-channel', (data) => {
     const { serverId, channelId } = data;
     const roomId = `server-${serverId}-channel-${channelId}`;
+    console.log('[SOCKET] join-server-channel:', roomId, 'socket:', socket.id);
     socket.join(roomId);
   });
 
@@ -182,12 +183,14 @@ io.on('connection', async (socket) => {
   socket.on('leave-server-channel', (data) => {
     const { serverId, channelId } = data;
     const roomId = `server-${serverId}-channel-${channelId}`;
+    console.log('[SOCKET] leave-server-channel:', roomId, 'socket:', socket.id);
     socket.leave(roomId);
   });
 
   // Handle joining a DM room
   socket.on('join-dm', (recipientId) => {
     const roomId = [socket.handshake.auth.userId, recipientId].sort().join('-');
+    console.log('[SOCKET] join-dm:', roomId, 'socket:', socket.id);
     socket.join(roomId);
   });
 
@@ -195,6 +198,7 @@ io.on('connection', async (socket) => {
   socket.on('send-dm', (data) => {
     const { recipientId, message } = data;
     const roomId = [socket.handshake.auth.userId, recipientId].sort().join('-');
+    console.log('[SOCKET] send-dm to room:', roomId, 'message:', message._id);
 
     io.to(roomId).emit('receive-message', {
       ...message,
