@@ -36,7 +36,6 @@ export const useVoice = (channelId: string, userId: string) => {
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
 
   useEffect(() => {
-
     console.log("Voice Hook Triggered. Channel:", channelId, "| User:", userId);
 
     if (!channelId || !userId) {
@@ -45,7 +44,8 @@ export const useVoice = (channelId: string, userId: string) => {
     }
 
     const initVoice = async () => {
-        console.log("Data is good, starting microphone check...");
+      console.log("Data is good, starting microphone check...");
+      
       // get mic access
       try {
         localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -65,6 +65,7 @@ export const useVoice = (channelId: string, userId: string) => {
           socket.emit('join-voice', { channelId, userId });
         });
       }
+
       socket.on('existing-peers', async ({ peers }: { peers: Peer[] }) => {
         if (!localStreamRef.current) return;
         
@@ -79,9 +80,9 @@ export const useVoice = (channelId: string, userId: string) => {
         }
       });
 
-      socket.on('user-joined', ({ socketId }: { socketId: string }) => {
+      socket.on('user-joined', ({ socketId, userId: remoteUserId }: { socketId: string, userId: string }) => {
         if (!localStreamRef.current) return;
-        setRemoteUsers(prev => ({ ...prev, [socketId]: userId }));
+        setRemoteUsers(prev => ({ ...prev, [socketId]: remoteUserId })); // Use the remote ID, not yours
         const pc = createPeer(socketId, socket, localStreamRef.current);
         peersRef.current[socketId] = pc;
       });
@@ -146,6 +147,13 @@ export const useVoice = (channelId: string, userId: string) => {
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leave-voice', { channelId, userId });
+        
+        socketRef.current.off('existing-peers');
+        socketRef.current.off('user-joined');
+        socketRef.current.off('offer');
+        socketRef.current.off('answer');
+        socketRef.current.off('ice-candidate');
+        socketRef.current.off('user-left');
       }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
