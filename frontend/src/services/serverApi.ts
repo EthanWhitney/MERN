@@ -100,6 +100,22 @@ export const deleteServer = async (serverId: string): Promise<void> => {
   }
 };
 
+// Leave a server
+export const leaveServer = async (serverId: string): Promise<void> => {
+  try {
+    const response = await authFetch(`api/servers/${serverId}/leave`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to leave server');
+    }
+  } catch (error) {
+    console.error('Error leaving server:', error);
+    throw error;
+  }
+};
+
 // Create a text channel in a server
 export const createTextChannel = async (serverId: string, channelData: CreateChannelRequest): Promise<Channel> => {
   try {

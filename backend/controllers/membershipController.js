@@ -85,7 +85,7 @@ const joinServer = async (req, res) => {
 // DELETE /api/servers/:serverId/leave
 const leaveServer = async (req, res) => {
   const { serverId } = req.params;
-  const { userId } = req.body;
+  const userId = req.userId;
   let error = '';
 
   try {

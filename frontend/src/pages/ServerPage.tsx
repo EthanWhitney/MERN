@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import './ServerPage.css';
 import { authFetch } from '../utils/authFetch';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
-import { getServer, deleteServer, deleteTextChannel, type Server, type Channel } from '../services/serverApi';
+import { getServer, deleteServer, leaveServer, deleteTextChannel, type Server, type Channel } from '../services/serverApi';
 import ServerList from '../components/ServerList';
 import CreateChannelModal from '../components/CreateChannelModal';
 import InviteToServerModal from '../components/InviteToServerModal';
@@ -25,6 +25,7 @@ const ServerPage = () => {
   const [error, setError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
   const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDeletingChannel, setIsDeletingChannel] = useState(false);
@@ -326,6 +327,26 @@ const ServerPage = () => {
                       <path d="M5 6.99902V20.999C5 22.101 5.897 22.999 7 22.999H17C18.103 22.999 19 22.101 19 20.999V6.99902H5ZM9 18.999H7V8.99902H9V18.999ZM13 18.999H11V8.99902H13V18.999ZM17 18.999H15V8.99902H17V18.999Z" />
                     </svg>
                     Delete Server
+                  </button>
+                )}
+                {!isOwner && (
+                  <button className="dropdown-menu-item delete" onClick={async () => {
+                    setShowServerMenu(false);
+                    setIsLeaving(true);
+                    try {
+                      if (serverId) {
+                        await leaveServer(serverId);
+                        navigate('/chat');
+                      }
+                    } catch (err) {
+                      console.error('Error leaving server:', err);
+                      setIsLeaving(false);
+                    }
+                  }} disabled={isLeaving}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M5 3C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H14V19H5V5H14V3H5ZM19 13H12V11H19V13ZM19 17H11V15H19V17ZM19 9H12V7H19V9Z"/>
+                    </svg>
+                    {isLeaving ? 'Leaving...' : 'Leave Server'}
                   </button>
                 )}
               </div>

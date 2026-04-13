@@ -147,13 +147,12 @@ const revokeInvite = async (req, res) => {
       return res.status(403).json({ error: 'Only server owner can revoke invites' });
     }
 
-    // Revoke the invite
-    const result = await db.collection('serverInvites').updateOne(
-      { _id: linkCode, serverId: serverObjId },
-      { $set: { isRevoked: true } }
+    // Delete the invite
+    const result = await db.collection('serverInvites').deleteOne(
+      { _id: linkCode, serverId: serverObjId }
     );
 
-    if (result.matchedCount === 0) {
+    if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Invite not found' });
     }
 
@@ -181,16 +180,19 @@ const getInviteMetadata = async (req, res) => {
 
     // Check if revoked
     if (invite.isRevoked) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has been revoked' });
     }
 
     // Check if expired
     if (invite.expiresAt && new Date() > invite.expiresAt) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has expired' });
     }
 
     // Check if max uses reached
     if (invite.maxUses && invite.currentUses >= invite.maxUses) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has reached its maximum uses' });
     }
 
@@ -326,16 +328,19 @@ const joinViaInvite = async (req, res) => {
 
     // Check if revoked
     if (invite.isRevoked) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has been revoked' });
     }
 
     // Check if expired
     if (invite.expiresAt && new Date() > invite.expiresAt) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has expired' });
     }
 
     // Check if max uses reached (only for non-personal invites)
     if (!invite.isPersonal && invite.maxUses && invite.currentUses >= invite.maxUses) {
+      await db.collection('serverInvites').deleteOne({ _id: linkCode });
       return res.status(410).json({ error: 'This invite has reached its maximum uses' });
     }
 
