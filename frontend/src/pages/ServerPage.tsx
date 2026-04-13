@@ -338,7 +338,7 @@ const ServerPage = () => {
                     try {
                       if (serverId) {
                         await leaveServer(serverId);
-                        navigate('/chat');
+                        navigate('/friends');
                       }
                     } catch (err) {
                       console.error('Error leaving server:', err);
