@@ -1,0 +1,324 @@
+/**
+ * Touch Target Mobile Standards
+ * Enforces WCAG AA and mobile best practices: minimum 44x44px tap targets
+ */
+
+/* ============================================
+   GLOBAL BUTTON & INTERACTIVE TOUCH TARGETS
+   ============================================ */
+
+/* All buttons */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"],
+.btn,
+.button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 16px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active,
+[role="button"]:active,
+.btn:active,
+.button:active {
+  opacity: 0.8;
+}
+
+/* ============================================
+   FORM INPUTS
+   ============================================ */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
+textarea,
+select {
+  min-height: 44px;
+  padding: 12px 16px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Remove outline on focus, use border */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #5865f2;
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+}
+
+/* Ensure textarea is touch-friendly */
+textarea {
+  min-height: 100px;
+  resize: vertical;
+  max-width: 100%;
+}
+
+/* ============================================
+   CHECKBOXES & RADIO BUTTONS
+   ============================================ */
+
+input[type="checkbox"],
+input[type="radio"] {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  margin: 8px;
+  cursor: pointer;
+}
+
+/* Label touch target wrapping checkboxes/radios */
+label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px;
+  margin: 4px -8px;
+  border-radius: 4px;
+}
+
+label:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+label:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   LINKS & ANCHOR TOUCH TARGETS
+   ============================================ */
+
+a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove extra padding for inline links */
+a[href]:not([role="button"]) {
+  min-height: auto;
+  padding: 0;
+}
+
+/* ============================================
+   ICON BUTTONS
+   ============================================ */
+
+.icon-btn,
+.icon-button,
+button.icon,
+[role="button"].icon,
+.btn-icon {
+  min-height: 44px;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* ============================================
+   SPECIFIC COMPONENT TOUCH TARGETS
+   ============================================ */
+
+/* Tab buttons */
+.tab,
+[role="tab"],
+.btn-tab {
+  min-height: 44px;
+  padding: 12px 16px;
+  margin: 4px 0;
+}
+
+/* Close buttons */
+.close-btn,
+.btn-close,
+[aria-label="Close"],
+.modal-close {
+  min-height: 44px;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Compose/action buttons */
+.compose-btn,
+.compose-icon-button,
+.action-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ============================================
+   FOCUS INDICATORS FOR ACCESSIBILITY
+   ============================================ */
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid #5865f2;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   DISABLE PINCH-ZOOM ON BUTTONS
+   ============================================ */
+
+button,
+a[role="button"],
+input[type="button"],
+input[type="submit"] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================
+   MOBILE-SPECIFIC ENHANCEMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Increase button padding on mobile */
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"],
+  .btn,
+  .button {
+    padding: 12px 20px;
+    min-height: 48px;
+  }
+
+  /* Increase form input padding */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="number"],
+  textarea,
+  select {
+    padding: 14px 18px;
+    min-height: 48px;
+    font-size: 16px; /* Prevents iOS zoom-on-focus */
+  }
+
+  /* Increase icon button size slightly */
+  .icon-btn,
+  .icon-button,
+  button.icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  /* Ensure labels still hit 44px minimum */
+  label {
+    min-height: 48px;
+    padding: 10px 8px;
+  }
+
+  /* Improve dropdown accessibility */
+  select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 40px;
+  }
+}
+
+/* ============================================
+   TOUCH-DEVICE SPECIFIC (hover: none)
+   ============================================ */
+
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  button:not(:focus-visible):hover,
+  a:not(:focus-visible):hover,
+  input[type="button"]:not(:focus-visible):hover {
+    background-color: inherit;
+  }
+
+  /* Add active state feedback instead */
+  button:active,
+  a:active,
+  input[type="button"]:active {
+    opacity: 0.7;
+  }
+}
+
+/* ============================================
+   PREVENT DOUBLE-TAP ZOOM ON BUTTONS
+   ============================================ */
+
+@media (pointer: coarse) {
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"] {
+    touch-action: manipulation;
+  }
+}

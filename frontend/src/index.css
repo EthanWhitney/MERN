@@ -16,6 +16,9 @@
 #root {
   height: 100%;
   width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 a {
@@ -29,10 +32,12 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
+  padding: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  min-width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 h1 {

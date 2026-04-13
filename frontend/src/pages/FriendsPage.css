@@ -23,11 +23,35 @@
   .friends-screen {
     grid-template-columns: 72px 280px 1fr;
   }
+
+  .friends-panel {
+    max-width: 280px;
+  }
 }
 
 @media (max-width: 768px) {
   .friends-screen {
-    grid-template-columns: 72px 250px 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  .friends-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: 280px;
+    height: 100%;
+    z-index: 1000;
+  }
+
+  .friends-panel.visible {
+    display: flex;
+  }
+
+  .chat-area {
+    grid-column: 1;
   }
 }
 
@@ -36,16 +60,27 @@
     grid-template-columns: 1fr;
   }
 
+  .friends-panel {
+    max-width: 85vw;
+  }
+
   .chat-area {
     display: none;
   }
 
   .chat-area.active {
     display: grid;
+    grid-column: 1;
     grid-template-columns: 1fr;
   }
 
   .friends-panel.hidden {
     display: none;
+  }
+}
+
+@media (max-width: 375px) {
+  .friends-panel {
+    max-width: 90vw;
   }
 }

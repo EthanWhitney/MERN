@@ -1,0 +1,153 @@
+/**
+ * Global Responsive Design Framework
+ * Breakpoints: 375px (mobile), 540px (mobile-wide), 768px (tablet), 1024px (desktop), 1440px (wide)
+ */
+
+/* ============================================
+   MOBILE-FIRST BASE / GLOBAL RESETS
+   ============================================ */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Replace 100vh with dynamic viewport height for keyboard handling */
+:root {
+  height: 100vh;
+  height: 100dvh;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+/* Hide elements by default, show on specific breakpoints */
+.hide-mobile {
+  display: none;
+}
+
+.hide-tablet {
+  display: block;
+}
+
+/* ============================================
+   TABLET BREAKPOINT: 768px (iPad, larger tablets)
+   ============================================ */
+
+@media (min-width: 768px) {
+  .hide-mobile {
+    display: block;
+  }
+
+  .show-mobile-only {
+    display: none;
+  }
+}
+
+/* ============================================
+   DESKTOP BREAKPOINT: 1024px (iPad Pro, Desktop)
+   ============================================ */
+
+@media (min-width: 1024px) {
+  .hide-tablet {
+    display: none;
+  }
+}
+
+/* ============================================
+   LARGE DESKTOP: 1440px+
+   ============================================ */
+
+@media (min-width: 1440px) {
+  /* For ultra-wide screens, can add max-widths to content */
+}
+
+/* ============================================
+   SAFE AREA INSETS (iOS Notch/Home Indicator)
+   ============================================ */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+.safe-area-all {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+}
+
+/* ============================================
+   SCROLLBAR OPTIMIZATION
+   ============================================ */
+
+/* Prevent scrollbar from causing layout shift */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Thinner scrollbar on mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+
+/* ============================================
+   PREVENT HORIZONTAL SCROLL ON BODY
+   ============================================ */
+
+body {
+  overflow-x: hidden;
+}
+
+/* ============================================
+   RESPONSIVE CONTAINER QUERIES (Future Use)
+   ============================================ */
+
+/* Can be extended with @container rules as needed */

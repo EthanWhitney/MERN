@@ -5,6 +5,7 @@
   width: 72px;
   min-width: 72px;
   height: 100vh;
+  height: 100dvh;
   background-color: #1e1f22;
   display: flex;
   flex-direction: column;

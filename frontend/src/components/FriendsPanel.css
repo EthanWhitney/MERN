@@ -239,12 +239,16 @@
 .friend-meta h2 {
   margin: 0;
   font-size: 1.05rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .friend-meta p {
   margin: 4px 0 0;
   font-size: 0.85rem;
   color: #949ba4;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .friend-actions {

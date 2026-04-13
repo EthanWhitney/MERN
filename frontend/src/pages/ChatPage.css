@@ -226,19 +226,112 @@
   color: #ff9f9f;
 }
 
-@media (max-width: 900px) {
+/* TABLET BREAKPOINT: 1024px - Reduce thread list width */
+@media (max-width: 1024px) {
+  .chat-page {
+    grid-template-columns: 200px 1fr;
+  }
+
+  .thread-list {
+    padding: 12px 8px;
+  }
+
+  .thread-item {
+    padding: 8px 6px;
+  }
+}
+
+/* TABLET BREAKPOINT: 768px - Convert thread list to drawer/modal */
+@media (max-width: 768px) {
   .chat-page {
     grid-template-columns: 1fr;
     height: 100vh;
+    height: 100dvh;
   }
 
   .thread-list {
     display: none;
-    border-right: none;
-    border-bottom: 1px solid #232a3a;
+    position: fixed;
+    inset: 0;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100%;
+    border-right: 1px solid #232c40;
+    border-bottom: none;
+    z-index: 999;
+    overflow-y: auto;
+  }
+
+  .thread-list.visible {
+    display: block;
+  }
+
+  .chat-panel {
+    grid-column: 1;
+  }
+}
+
+/* MOBILE BREAKPOINT: 540px - Full mobile optimization */
+@media (max-width: 540px) {
+  .chat-page {
+    grid-template-columns: 1fr;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .thread-list {
+    width: 85vw;
+    max-width: 320px;
+  }
+
+  .thread-item {
+    padding: 8px 4px;
+    font-size: 0.9rem;
+  }
+
+  .thread-title {
+    font-size: 0.9rem;
+  }
+
+  .thread-subtitle {
+    font-size: 0.65rem;
+  }
+
+  .chat-panel {
+    grid-column: 1;
   }
 
   .message-composer {
     grid-template-columns: 1fr;
+    padding: 12px 12px;
+  }
+
+  textarea {
+    min-height: 40px;
+  }
+}
+
+/* SMALL MOBILE: 375px */
+@media (max-width: 375px) {
+  .thread-list {
+    width: 90vw;
+  }
+
+  .thread-item {
+    padding: 6px 4px;
+  }
+
+  .chat-panel {
+    padding: 0;
+  }
+
+  .thread-header {
+    padding: 12px 12px;
+    font-size: 0.95rem;
+  }
+
+  .message-list {
+    padding: 12px 12px 18px;
   }
 }

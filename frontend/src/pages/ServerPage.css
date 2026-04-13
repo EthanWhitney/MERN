@@ -715,3 +715,79 @@
 .dropdown-menu-item.invite:hover svg {
   color: #fff;
 }
+
+/* ============================================
+   MOBILE RESPONSIVE LAYOUT
+   ============================================ */
+
+/* TABLET BREAKPOINT: 1024px - Hide right panel, reduce sidebar width */
+@media (max-width: 1024px) {
+  .server-screen {
+    grid-template-columns: 72px 200px 1fr;
+  }
+
+  .voice-settings,
+  .right-sidebar {
+    display: none;
+  }
+}
+
+/* TABLET BREAKPOINT: 768px - Stack sidebars vertically, main content only */
+@media (max-width: 768px) {
+  .server-screen {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .server-sidebar,
+  .channel-sidebar {
+    display: none;
+  }
+
+  .chat-area {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .message-input-area {
+    position: relative;
+    bottom: 0;
+  }
+}
+
+/* MOBILE BREAKPOINT: 540px - Full mobile optimization */
+@media (max-width: 540px) {
+  .server-screen {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .server-header {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .server-header h2 {
+    font-size: 14px;
+  }
+
+  .channel-sidebar,
+  .voice-settings {
+    display: none !important;
+  }
+
+  .chat-area {
+    grid-column: 1;
+  }
+}
+
+/* SMALL MOBILE: 375px */
+@media (max-width: 375px) {
+  .server-header {
+    height: 52px;
+  }
+
+  .server-header h2 {
+    font-size: 13px;
+  }
+}
