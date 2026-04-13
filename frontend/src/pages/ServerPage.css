@@ -19,7 +19,15 @@
   background: #2b2d31;
   display: flex;
   flex-direction: column;
+  height: 100%;
   overflow: hidden;
+}
+
+/* Scrollable channel list — fills space above pinned user bar */
+.channel-sections-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .server-header {
