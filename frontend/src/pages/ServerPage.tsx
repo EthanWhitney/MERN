@@ -453,6 +453,7 @@ const ServerPage = () => {
           channelName={activeVoiceChannel.name}
           currentUserId={currentUserId}
           onLeave={() => setActiveVoiceChannel(null)}
+          serverProfiles={serverProfiles}
         />
       )}
 
