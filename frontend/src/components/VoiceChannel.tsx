@@ -67,19 +67,21 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
             background: '#5865f2', display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
           }}>
-            {myUsername[0].toUpperCase()}
+            {myUsername[0]?.toUpperCase() || '?'}
           </div>
           <span style={{ color: '#dbdee1', fontSize: '13px' }}>{myUsername}</span>
           <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
         </div>
-        
+
         {/* Remote users */}
         {Object.entries(remoteStreams).map(([socketId, stream]) => {
-          const userId = remoteUsers[socketId];
+          const remoteUser = remoteUsers[socketId];
+          const userId = remoteUser?.userId;
+          const socketUsername = remoteUser?.username;
           
           const profile = serverProfiles.find(p => p.userId === userId);
 
-          const name = profile?.serverSpecificName || profile?.username || 'Unknown';
+          const name = profile?.serverSpecificName || profile?.username || socketUsername || 'Unknown';
           
           return (
             <div key={socketId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
