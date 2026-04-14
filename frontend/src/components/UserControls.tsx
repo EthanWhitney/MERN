@@ -13,17 +13,16 @@ interface UserControlsProps {
   serverId?: string;
   serverProfiles?: any[];
   onProfileUpdate?: () => void;
-  activeVoiceChannelId?: string; // Voice channel ID (not text channel)
 }
 
-const UserControls = ({ userId, username, profilePicture, isServerPage = false, serverId, serverProfiles = [], onProfileUpdate, activeVoiceChannelId }: UserControlsProps) => {
+const UserControls = ({ userId, username, profilePicture, isServerPage = false, serverId, serverProfiles = [], onProfileUpdate }: UserControlsProps) => {
   const { channelId } = useParams<{ channelId?: string }>();
   const [showSettings, setShowSettings] = useState(false);
   const [currentProfilePicture, setCurrentProfilePicture] = useState<string>('');
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
-  // Get user ID for voice hook
+  // Try to get voice state from hook (will only work in voice channels)
   const currentUserIdForVoice = useMemo(() => {
     if (!currentUserId) {
       const raw = localStorage.getItem('user_data');
@@ -35,10 +34,8 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
     return currentUserId;
   }, [currentUserId]);
 
-  // Use activeVoiceChannelId if provided (server page), otherwise try route params
-  const voiceChannelId = activeVoiceChannelId || (channelId || '');
-  const voiceHookEnabled = Boolean(voiceChannelId && currentUserIdForVoice);
-  const voice = useVoice(voiceChannelId, currentUserIdForVoice);
+  const voiceHookEnabled = Boolean(channelId && currentUserIdForVoice);
+  const voice = useVoice(channelId || '', currentUserIdForVoice);
   
   // Fallback to local state if not in voice channel
   const [isMutedLocal, setIsMutedLocal] = useState(false);
