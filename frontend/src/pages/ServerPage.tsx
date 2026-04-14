@@ -480,7 +480,7 @@ const ServerPage = () => {
         />
       )}
 
-      <UserControls isServerPage={true} serverId={serverId} serverProfiles={serverProfiles} onProfileUpdate={() => serverId && loadServerProfiles(serverId)} />
+      <UserControls isServerPage={true} serverId={serverId} serverProfiles={serverProfiles} onProfileUpdate={() => serverId && loadServerProfiles(serverId)} activeVoiceChannelId={activeVoiceChannel?.id} />
       </div> 
 
       {/* Main Chat Area */}
