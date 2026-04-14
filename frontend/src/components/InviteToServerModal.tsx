@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './InviteToServerModal.css';
 import { authFetch } from '../utils/authFetch';
+import { sendDMMessage } from '../utils/socketService';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
 
 interface Friend {
@@ -101,6 +102,8 @@ const InviteToServerModal = ({ isOpen, onClose, serverId, serverName, onInviteSe
         });
 
         if (dmResponse.ok) {
+          const dmData = await dmResponse.json();
+          if (dmData.message) sendDMMessage(friend._id, dmData.message);
           setInvitedUsers(prev => new Set([...prev, friend._id]));
           if (onInviteSent) {
             onInviteSent();
@@ -183,6 +186,8 @@ const InviteToServerModal = ({ isOpen, onClose, serverId, serverName, onInviteSe
         });
 
         if (dmResponse.ok) {
+          const dmData2 = await dmResponse.json();
+          if (dmData2.message) sendDMMessage(userId, dmData2.message);
           setInvitedUsers(prev => new Set([...prev, userId]));
           setSearchQuery('');
           if (onInviteSent) {

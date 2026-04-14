@@ -6,6 +6,8 @@ class ChatMessage {
   final String senderProfilePicture;
   final DateTime createdAt;
   final bool isEdited;
+  // Optional metadata for special message types (e.g. server invites)
+  final Map<String, dynamic>? metadata;
 
   ChatMessage({
     required this.id,
@@ -15,23 +17,52 @@ class ChatMessage {
     required this.senderProfilePicture,
     required this.createdAt,
     this.isEdited = false,
+    this.metadata,
   });
 
-  // This factory method translates your Node.js JSON into a Flutter Object
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
-    // Handling the nested 'sender' object from your chatController.js
-    final senderParams = json['sender'] ?? {};
-    
+    // Sender info can be nested under 'sender' or flat on the object
+    final sender = json['sender'];
+    final senderMap = sender is Map<String, dynamic> ? sender : <String, dynamic>{};
+
+    // metadata — stored as a sub-object on the message document
+    Map<String, dynamic>? meta;
+    final rawMeta = json['metadata'];
+    if (rawMeta is Map) {
+      meta = Map<String, dynamic>.from(rawMeta);
+    }
+
     return ChatMessage(
-      id: json['_id'] ?? '',
-      content: json['message'] ?? json['content'] ?? '', // Handles both variations you use
-      senderId: senderParams['userId']?.toString() ?? '',
-      senderUsername: senderParams['serverSpecificName'] ?? senderParams['username'] ?? 'Unknown User',
-      senderProfilePicture: senderParams['serverSpecificPFP'] ?? senderParams['profilePicture'] ?? '',
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      content: json['content']?.toString() ??
+          json['message']?.toString() ?? '',
+      senderId: senderMap['userId']?.toString() ??
+          json['senderId']?.toString() ??
+          json['userId']?.toString() ?? '',
+      senderUsername: senderMap['serverSpecificName']?.toString() ??
+          senderMap['username']?.toString() ??
+          json['senderUsername']?.toString() ?? 'Unknown',
+      senderProfilePicture: senderMap['serverSpecificPFP']?.toString() ??
+          senderMap['profilePicture']?.toString() ??
+          json['senderProfilePicture']?.toString() ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
-      isEdited: json['edited'] ?? false,
+      isEdited: json['edited'] == true,
+      metadata: meta,
+    );
+  }
+
+  ChatMessage copyWith({String? content, bool? isEdited}) {
+    return ChatMessage(
+      id: id,
+      content: content ?? this.content,
+      senderId: senderId,
+      senderUsername: senderUsername,
+      senderProfilePicture: senderProfilePicture,
+      createdAt: createdAt,
+      isEdited: isEdited ?? this.isEdited,
+      metadata: metadata,
     );
   }
 }
