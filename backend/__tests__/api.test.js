@@ -9,8 +9,17 @@ beforeAll(() => {
   app = httpServer; 
 });
 
-afterAll((done) => {
-  httpServer.close(done);
+afterAll(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  
+  if (httpServer && httpServer.close) {
+    await new Promise((resolve) => {
+      httpServer.close(() => {
+        console.log('[TEARDOWN] Server closed successfully');
+        resolve();
+      });
+    });
+  }
 });
 
 const BASE = '/api';
