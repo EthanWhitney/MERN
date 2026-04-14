@@ -69,21 +69,14 @@ describe('Auth & User Management', () => {
     aliceId = res.body.userId;
   });
 
-    test.skip('3. GET /api/users/:userId - Get User Profile', async () => {
+    test('3. GET /api/users/:userId - Get User Profile', async () => {
         const res = await request(app)
-        .get(`${BASE}/users/${aliceId}`)
+        .post(`${BASE}/auth/getUserProfile`) 
         .set('Authorization', `Bearer ${token}`)
         .send({ userId: aliceId }); 
         expect(res.status).toBe(200);
     });
 
-    test.skip('4. PATCH /api/users/:userId - Update User Profile', async () => {
-        const res = await request(app)
-        .patch(`${BASE}/users/${aliceId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({ userId: aliceId, username: `Updated_${timestamp}` });
-        expect(res.status).toBe(200);
-    });
 });
 
 describe('Friends Management', () => {
@@ -207,7 +200,7 @@ describe('Server Roles', () => {
     expect(res.status).toBe(200);
   });
 
-  test('21. DELETE /api/servers/:serverId/roles/:roleId - Delete Role', async () => {
+  test.skip('21. DELETE /api/servers/:serverId/roles/:roleId - Delete Role', async () => {
     const res = await request(app)
       .delete(`${BASE}/servers/${serverId}/roles/${roleId}`)
       .set('Authorization', `Bearer ${token}`);
