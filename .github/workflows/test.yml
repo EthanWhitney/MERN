@@ -26,8 +26,7 @@ jobs:
     - name: Run Jest Unit Tests
       working-directory: ./backend
       env:
-        MONGODB_URI: ${{ secrets.MONGODB_URI }}
-        JWT_SECRET: "test_secret_for_github_actions"
-        JWT_REFRESH_SECRET: "test_refresh_secret_for_github_actions"
-        SENDGRID_API_KEY: "SG.dummy_key_so_it_doesnt_warn"
+        MONGODB_URI: ${{ secrets.MONGODB_URI }} 
+        JWT_SECRET: "test_secret"
+        JWT_REFRESH_SECRET: "test_refresh"
       run: npm test

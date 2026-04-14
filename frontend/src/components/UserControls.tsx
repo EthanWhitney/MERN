@@ -1,8 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import './UserControls.css';
 import UserControlsOverlay from './UserControlsOverlay';
-import { useVoice } from '../hooks/useVoice';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
 
 interface UserControlsProps {
@@ -13,61 +11,15 @@ interface UserControlsProps {
   serverId?: string;
   serverProfiles?: any[];
   onProfileUpdate?: () => void;
-  activeVoiceChannelId?: string; // Voice channel ID (not text channel)
 }
 
-const UserControls = ({ userId, username, profilePicture, isServerPage = false, serverId, serverProfiles = [], onProfileUpdate, activeVoiceChannelId }: UserControlsProps) => {
-  const { channelId } = useParams<{ channelId?: string }>();
+const UserControls = ({ userId, username, profilePicture, isServerPage = false, serverId, serverProfiles = [], onProfileUpdate }: UserControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
   const [currentProfilePicture, setCurrentProfilePicture] = useState<string>('');
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
-
-  // Get user ID for voice hook
-  const currentUserIdForVoice = useMemo(() => {
-    if (!currentUserId) {
-      const raw = localStorage.getItem('user_data');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        return parsed.id || parsed.userId || '';
-      }
-    }
-    return currentUserId;
-  }, [currentUserId]);
-
-  // Use activeVoiceChannelId if provided (server page), otherwise try route params
-  const voiceChannelId = activeVoiceChannelId || (channelId || '');
-  const voiceHookEnabled = Boolean(voiceChannelId && currentUserIdForVoice);
-  const voice = useVoice(voiceChannelId, currentUserIdForVoice);
-  
-  // Fallback to local state if not in voice channel
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
-  const [isDeafenedLocal, setIsDeafenedLocal] = useState(false);
-
-  const isMuted = voiceHookEnabled ? voice.isMuted : isMutedLocal;
-  const isDeafened = voiceHookEnabled ? voice.isDeafened : isDeafenedLocal;
-
-  const toggleMute = () => {
-    console.log(`[UserControls] toggleMute: voiceHookEnabled=${voiceHookEnabled}, isMuted=${isMuted}`);
-    if (voiceHookEnabled) {
-      console.log(`[UserControls] Calling voice hook:`, isMuted ? 'unmuteAudio' : 'muteAudio');
-      isMuted ? voice.unmuteAudio() : voice.muteAudio();
-    } else {
-      console.log(`[UserControls] Using local state`);
-      setIsMutedLocal(!isMutedLocal);
-    }
-  };
-
-  const toggleDeafen = () => {
-    console.log(`[UserControls] toggleDeafen: voiceHookEnabled=${voiceHookEnabled}, isDeafened=${isDeafened}`);
-    if (voiceHookEnabled) {
-      console.log(`[UserControls] Calling voice hook:`, isDeafened ? 'undeafenAudio' : 'deafenAudio');
-      isDeafened ? voice.undeafenAudio() : voice.deafenAudio();
-    } else {
-      console.log(`[UserControls] Using local state`);
-      setIsDeafenedLocal(!isDeafenedLocal);
-    }
-  };
 
   // Initialize user data from props or localStorage, prioritizing server profile cache if on server page
   useEffect(() => {
@@ -204,7 +156,7 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
       <div className="user-controls-buttons">
         <button
           className={`user-controls-btn user-controls-mute ${isMuted ? 'active' : ''}`}
-          onClick={toggleMute}
+          onClick={() => setIsMuted(!isMuted)}
           aria-label="Mute"
           title="Mute"
         >
@@ -223,7 +175,7 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
 
         <button
           className={`user-controls-btn user-controls-deafen ${isDeafened ? 'active' : ''}`}
-          onClick={toggleDeafen}
+          onClick={() => setIsDeafened(!isDeafened)}
           aria-label="Deafen"
           title="Deafen"
         >
