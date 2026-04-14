@@ -29,17 +29,17 @@ describe('Auth & User Management', () => {
     expect([201, 400, 409]).toContain(res.status); 
   });
 
-  test('2. POST /api/auth/login - Login User', async () => {
-    const res = await request(app)
-      .post(`${BASE}/auth/login`)
-      .send({ emailOrUsername: uniqueEmail, password: testPassword });
-    
-    expect(res.status).toBe(200);
-    expect(res.body.accessToken).toBeDefined();
-    
-    token = res.body.accessToken; 
-    aliceId = res.body.userId;
-  });
+    test('2. POST /api/auth/login - Login User', async () => {
+        const res = await request(app)
+        .post(`${BASE}/auth/login`)
+        .send({ emailOrUsername: 'ryguy', password: 'anakin' });
+        
+        expect(res.status).toBe(200);
+        expect(res.body.accessToken).toBeDefined();
+        
+        token = res.body.accessToken; 
+        aliceId = res.body.userId;
+    });
 
   test('3. GET /api/users/:userId - Get User Profile', async () => {
     const res = await request(app)
