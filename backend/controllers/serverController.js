@@ -11,10 +11,11 @@ if (!client.topology || !client.topology.isConnected()) {
 // POST /api/servers
 const createServer = async (req, res) => {
   const { serverName, description } = req.body;
-  const ownerId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+
+    const ownerId = req.userId; // FIX: Pull directly from req.userId
     if (!serverName) {
       error = 'serverName is required';
       return res.status(400).json({ server: null, error });
@@ -208,10 +209,11 @@ const updateServer = async (req, res) => {
 // DELETE /api/servers/:serverId
 const deleteServer = async (req, res) => {
   const { serverId } = req.params;
-  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+    const userId = req.userId; // FIX: Pull directly from req.userId
+
     if (!ObjectId.isValid(serverId)) {
       error = 'Invalid server ID';
       return res.status(400).json({ message: '', error });
@@ -257,10 +259,11 @@ const deleteServer = async (req, res) => {
 // get all servers a user belongs to
 // GET /api/users/servers
 const getUserServers = async (req, res) => {
-  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+    const userId = req.user.userId; // Get from verified token
+
     if (!ObjectId.isValid(userId)) {
       error = 'Invalid user ID';
       return res.status(400).json({ servers: [], error });
