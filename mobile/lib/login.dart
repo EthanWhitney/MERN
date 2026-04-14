@@ -183,21 +183,20 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // NEW: Forgot Password link
                 GestureDetector(
-                onTap: () => Navigator.push(
-                context,
-
-                MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
-                ),
-                child: const Text(
-                'Forgot your password?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                color: Color(0xFF5865F2),
-                fontSize: 13,
-                fontWeight: FontWeight.w500),
-                ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ForgotPasswordPage()),
+                  ),
+                  child: const Text(
+                    'Forgot your password?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: Color(0xFF5865F2),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500),
+                  ),
                 ),
               ],
             ),

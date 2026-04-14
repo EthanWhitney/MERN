@@ -93,13 +93,12 @@ class ApiService {
   }
 
 
-  static Future<Map<String, dynamic>> requestPasswordReset(String login) async {
+  static Future<Map<String, dynamic>> requestPasswordReset(String email) async {
     try {
       final response = await _client.post(
-        Uri.parse(buildPath('api/auth/recover-account')),
+        Uri.parse(buildPath('api/auth/request-password-reset')),
         headers: {'Content-Type': 'application/json'},
-        // Controller looks for 'login', not 'email'
-        body: jsonEncode({'login': login}), 
+        body: jsonEncode({'email': email}),
       );
       return jsonDecode(response.body);
     } catch (e) {
@@ -107,8 +106,24 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> verifyResetAndChangePassword({
-    required String login,
+  static Future<Map<String, dynamic>> verifyResetCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await _client.post(
+        Uri.parse(buildPath('api/auth/verify-reset-code')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'code': code}),
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      return {'error': 'Connection failed'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
     required String code,
     required String newPassword,
   }) async {
@@ -116,11 +131,10 @@ class ApiService {
       final response = await _client.post(
         Uri.parse(buildPath('api/auth/reset-password')),
         headers: {'Content-Type': 'application/json'},
-        // Controller looks for 'login', 'code', and 'password'
         body: jsonEncode({
-          'login': login,
+          'email': email,
           'code': code,
-          'password': newPassword, 
+          'newPassword': newPassword,
         }),
       );
       return jsonDecode(response.body);
