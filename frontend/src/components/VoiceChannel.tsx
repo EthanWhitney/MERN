@@ -1,20 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { useVoice } from '../hooks/useVoice';
 
-const AudioPlayer: React.FC<{ stream: MediaStream; isMuted?: boolean }> = ({ stream, isMuted = false }) => {
+const AudioPlayer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.srcObject = stream;
-      // Mute audio element if local user is deafened
-      audioRef.current.muted = isMuted;
-    }
-  }, [stream, isMuted]);
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
+    if (audioRef.current) audioRef.current.srcObject = stream;
+  }, [stream]);
   return <audio ref={audioRef} autoPlay playsInline />;
 };
 
@@ -144,7 +135,7 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
               </div>
               <span style={{ color: '#dbdee1', fontSize: '13px' }}>{name}</span>
               <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
-              <AudioPlayer stream={stream} isMuted={isDeafened} />
+              <AudioPlayer stream={stream} />
             </div>
           );
         })}
