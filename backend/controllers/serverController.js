@@ -28,16 +28,6 @@ const createServer = async (req, res) => {
 
     const db = client.db('discord_clone');
 
-    // Check if server name already exists
-    const existingServer = await db.collection('servers').findOne({ 
-      serverName: { $regex: new RegExp(`^${serverName}$`, 'i') } 
-    });
-    
-    if (existingServer) {
-      error = 'A server with this name already exists';
-      return res.status(409).json({ server: null, error });
-    }
-
     const owner = await db.collection('users').findOne({ _id: ownerObjId });
     if (!owner) {
       error = 'Owner user not found';
