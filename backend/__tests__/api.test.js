@@ -34,7 +34,7 @@ describe('Auth & User Management', () => {
   });
 
   test('Force Verify Test User in Database', async () => {
-    const dbUrl = process.env.MONGODB_URI || 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
+    const dbUrl = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
     const client = new MongoClient(dbUrl);
     await client.connect();
     const db = client.db('discord_clone');
