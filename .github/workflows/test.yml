@@ -29,4 +29,5 @@ jobs:
         MONGODB_URI: ${{ secrets.MONGODB_URI }} 
         JWT_SECRET: "test_secret"
         JWT_REFRESH_SECRET: "test_refresh"
+        SENDGRID_API_KEY: "SG.dummy_key_for_testing"
       run: npx jest --forceExit --detectOpenHandles
