@@ -46,17 +46,42 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
   const prevScrollHeightRef = useRef<number>(0);
   const shouldPreserveScrollRef = useRef<boolean>(false);
 
-  // Derive current user's username from localStorage
-  const currentUsername = useMemo(() => {
+  // Derive current user's basic profile from localStorage for sender-id fallback only
+  const currentUserData = useMemo(() => {
     try {
       const raw = localStorage.getItem('user_data');
-      if (!raw) return '';
+      if (!raw) {
+        return { username: '', profilePicture: '' };
+      }
       const parsed = JSON.parse(raw);
-      return parsed.username || '';
+      return {
+        username: parsed.username || '',
+        profilePicture: parsed.profilePicture || '',
+      };
     } catch {
-      return '';
+      return { username: '', profilePicture: '' };
     }
   }, []);
+
+  const senderFallbackById = useMemo(() => {
+    const fallbackMap: Record<string, { username: string; profilePicture?: string }> = {};
+
+    if (currentUserId) {
+      fallbackMap[currentUserId] = {
+        username: currentUserData.username,
+        profilePicture: currentUserData.profilePicture,
+      };
+    }
+
+    if (selectedFriend?._id) {
+      fallbackMap[selectedFriend._id] = {
+        username: selectedFriend.username,
+        profilePicture: selectedFriend.profilePicture,
+      };
+    }
+
+    return fallbackMap;
+  }, [currentUserId, currentUserData, selectedFriend]);
 
   // Auto-scroll to bottom when messages change (but not when loading more)
   useEffect(() => {
@@ -242,11 +267,17 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
           <section className="chat-messages" ref={chatMessagesRef}>
             {messageGroups.map((group, index) => {
               const isOwnMessage = group.senderId === currentUserId;
+              const firstMessage = group.messages[0];
+              const senderProfile = firstMessage?.sender;
+              const fallbackSender = senderFallbackById[group.senderId] || { username: 'Unknown User', profilePicture: '' };
+              const senderUsername = senderProfile?.username || fallbackSender.username;
+              const senderAvatar = normalizeProfilePicturePath(senderProfile?.profilePicture || fallbackSender.profilePicture || '');
+
               return (
                 <MessageGroup
                   key={`${group.senderId}-${index}`}
-                  senderUsername={isOwnMessage ? currentUsername : selectedFriend.username}
-                  senderAvatar={isOwnMessage ? undefined : normalizeProfilePicturePath(selectedFriend.profilePicture)}
+                  senderUsername={senderUsername}
+                  senderAvatar={senderAvatar || undefined}
                   messages={group.messages}
                   isOwn={isOwnMessage}
                   onEditMessage={editMessage}

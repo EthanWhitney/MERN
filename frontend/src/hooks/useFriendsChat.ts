@@ -32,6 +32,11 @@ export interface ChatMessage {
   senderId: string;
   recipientId: string;
   message: string;
+  sender?: {
+    userId?: string;
+    username?: string;
+    profilePicture?: string;
+  };
   createdAt?: string;
   edited?: boolean;
   editedAt?: string;
