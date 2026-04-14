@@ -246,66 +246,90 @@ export const useVoice = (channelId: string, userId: string) => {
 
   // Effect to sync audio track state with mute/deafen state
   useEffect(() => {
+    console.log(`[useVoice] Syncing tracks: isMuted=${isMuted}, isDeafened=${isDeafened}, audioTracks=${audioTracksRef.current.length}`);
     if (isMuted || isDeafened) {
       // Disable tracks when muted or deafened
       audioTracksRef.current.forEach(track => {
+        console.log(`[useVoice] Disabling track:`, track);
         track.enabled = false;
       });
     } else {
       // Enable tracks when neither muted nor deafened
       audioTracksRef.current.forEach(track => {
+        console.log(`[useVoice] Enabling track:`, track);
         track.enabled = true;
       });
     }
   }, [isMuted, isDeafened]);
 
-  // Control methods for mute/deafen
+  // Control methods for mute/deafen - read state from localStorage to avoid stale closures
   const muteAudio = useCallback(() => {
+    const { isDeafened: currentDeafened } = loadVoiceSettings();
+    console.log(`[useVoice] muteAudio called`);
     setIsMuted(true);
     audioTracksRef.current.forEach(track => {
+      console.log(`[useVoice] muteAudio: disabling track`, track);
       track.enabled = false;
     });
-    saveVoiceSettings(true, isDeafened);
+    saveVoiceSettings(true, currentDeafened);
     if (socketRef.current) {
+      console.log(`[useVoice] muteAudio: emitting user-muted event`);
       socketRef.current.emit('user-muted', { channelId, userId, isMuted: true });
+    } else {
+      console.log(`[useVoice] muteAudio: socket not available!`);
     }
-  }, [channelId, userId, isDeafened]);
+  }, [channelId, userId]);
 
   const unmuteAudio = useCallback(() => {
+    const { isDeafened: currentDeafened } = loadVoiceSettings();
+    console.log(`[useVoice] unmuteAudio called`);
     setIsMuted(false);
-    // Only enable if not deafened
     audioTracksRef.current.forEach(track => {
-      track.enabled = !isDeafened;
+      console.log(`[useVoice] unmuteAudio: enabling track (deafened=${currentDeafened})`, track);
+      track.enabled = !currentDeafened;
     });
-    saveVoiceSettings(false, isDeafened);
+    saveVoiceSettings(false, currentDeafened);
     if (socketRef.current) {
+      console.log(`[useVoice] unmuteAudio: emitting user-muted event`);
       socketRef.current.emit('user-muted', { channelId, userId, isMuted: false });
+    } else {
+      console.log(`[useVoice] unmuteAudio: socket not available!`);
     }
-  }, [channelId, userId, isDeafened]);
+  }, [channelId, userId]);
 
   const deafenAudio = useCallback(() => {
+    const { isMuted: currentMuted } = loadVoiceSettings();
+    console.log(`[useVoice] deafenAudio called`);
     setIsDeafened(true);
-    // Disable local audio tracks (mic)
     audioTracksRef.current.forEach(track => {
+      console.log(`[useVoice] deafenAudio: disabling track`, track);
       track.enabled = false;
     });
-    saveVoiceSettings(isMuted, true);
+    saveVoiceSettings(currentMuted, true);
     if (socketRef.current) {
+      console.log(`[useVoice] deafenAudio: emitting user-deafened event`);
       socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: true });
+    } else {
+      console.log(`[useVoice] deafenAudio: socket not available!`);
     }
-  }, [channelId, userId, isMuted]);
+  }, [channelId, userId]);
 
   const undeafenAudio = useCallback(() => {
+    const { isMuted: currentMuted } = loadVoiceSettings();
+    console.log(`[useVoice] undeafenAudio called`);
     setIsDeafened(false);
-    // Re-enable audio tracks if not muted
     audioTracksRef.current.forEach(track => {
-      track.enabled = !isMuted;
+      console.log(`[useVoice] undeafenAudio: enabling track (muted=${currentMuted})`, track);
+      track.enabled = !currentMuted;
     });
-    saveVoiceSettings(isMuted, false);
+    saveVoiceSettings(currentMuted, false);
     if (socketRef.current) {
+      console.log(`[useVoice] undeafenAudio: emitting user-deafened event`);
       socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: false });
+    } else {
+      console.log(`[useVoice] undeafenAudio: socket not available!`);
     }
-  }, [channelId, userId, isMuted]);
+  }, [channelId, userId]);
 
   return { 
     isConnected, 

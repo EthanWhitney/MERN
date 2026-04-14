@@ -48,17 +48,23 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
   const isDeafened = voiceHookEnabled ? voice.isDeafened : isDeafenedLocal;
 
   const toggleMute = () => {
+    console.log(`[UserControls] toggleMute: voiceHookEnabled=${voiceHookEnabled}, isMuted=${isMuted}`);
     if (voiceHookEnabled) {
+      console.log(`[UserControls] Calling voice hook:`, isMuted ? 'unmuteAudio' : 'muteAudio');
       isMuted ? voice.unmuteAudio() : voice.muteAudio();
     } else {
+      console.log(`[UserControls] Using local state`);
       setIsMutedLocal(!isMutedLocal);
     }
   };
 
   const toggleDeafen = () => {
+    console.log(`[UserControls] toggleDeafen: voiceHookEnabled=${voiceHookEnabled}, isDeafened=${isDeafened}`);
     if (voiceHookEnabled) {
+      console.log(`[UserControls] Calling voice hook:`, isDeafened ? 'undeafenAudio' : 'deafenAudio');
       isDeafened ? voice.undeafenAudio() : voice.deafenAudio();
     } else {
+      console.log(`[UserControls] Using local state`);
       setIsDeafenedLocal(!isDeafenedLocal);
     }
   };
