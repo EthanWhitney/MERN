@@ -1,8 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import './UserControls.css';
 import UserControlsOverlay from './UserControlsOverlay';
-import { useVoice } from '../hooks/useVoice';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
 
 interface UserControlsProps {
@@ -16,49 +14,12 @@ interface UserControlsProps {
 }
 
 const UserControls = ({ userId, username, profilePicture, isServerPage = false, serverId, serverProfiles = [], onProfileUpdate }: UserControlsProps) => {
-  const { channelId } = useParams<{ channelId?: string }>();
   const [showSettings, setShowSettings] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
   const [currentProfilePicture, setCurrentProfilePicture] = useState<string>('');
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [currentUserId, setCurrentUserId] = useState<string>('');
-
-  // Try to get voice state from hook (will only work in voice channels)
-  const currentUserIdForVoice = useMemo(() => {
-    if (!currentUserId) {
-      const raw = localStorage.getItem('user_data');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        return parsed.id || parsed.userId || '';
-      }
-    }
-    return currentUserId;
-  }, [currentUserId]);
-
-  const voiceHookEnabled = Boolean(channelId && currentUserIdForVoice);
-  const voice = useVoice(channelId || '', currentUserIdForVoice);
-  
-  // Fallback to local state if not in voice channel
-  const [isMutedLocal, setIsMutedLocal] = useState(false);
-  const [isDeafenedLocal, setIsDeafenedLocal] = useState(false);
-
-  const isMuted = voiceHookEnabled ? voice.isMuted : isMutedLocal;
-  const isDeafened = voiceHookEnabled ? voice.isDeafened : isDeafenedLocal;
-
-  const toggleMute = () => {
-    if (voiceHookEnabled) {
-      isMuted ? voice.unmuteAudio() : voice.muteAudio();
-    } else {
-      setIsMutedLocal(!isMutedLocal);
-    }
-  };
-
-  const toggleDeafen = () => {
-    if (voiceHookEnabled) {
-      isDeafened ? voice.undeafenAudio() : voice.deafenAudio();
-    } else {
-      setIsDeafenedLocal(!isDeafenedLocal);
-    }
-  };
 
   // Initialize user data from props or localStorage, prioritizing server profile cache if on server page
   useEffect(() => {
@@ -195,7 +156,7 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
       <div className="user-controls-buttons">
         <button
           className={`user-controls-btn user-controls-mute ${isMuted ? 'active' : ''}`}
-          onClick={toggleMute}
+          onClick={() => setIsMuted(!isMuted)}
           aria-label="Mute"
           title="Mute"
         >
@@ -214,7 +175,7 @@ const UserControls = ({ userId, username, profilePicture, isServerPage = false, 
 
         <button
           className={`user-controls-btn user-controls-deafen ${isDeafened ? 'active' : ''}`}
-          onClick={toggleDeafen}
+          onClick={() => setIsDeafened(!isDeafened)}
           aria-label="Deafen"
           title="Deafen"
         >

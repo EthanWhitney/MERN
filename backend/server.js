@@ -206,20 +206,18 @@ io.on('connection', async (socket) => {
     });
   });
 
-  socket.on('join-voice', ({ channelId, userId: vUserId, username: vUsername, isMuted: vIsMuted, isDeafened: vIsDeafened }) => {
+  socket.on('join-voice', ({ channelId, userId: vUserId, username: vUsername }) => {
     socket.join(channelId);
 
     if (!voiceRooms[channelId]) voiceRooms[channelId] = new Map();
-    voiceRooms[channelId].set(socket.id, { userId: vUserId, username: vUsername, isMuted: vIsMuted, isDeafened: vIsDeafened });
+    voiceRooms[channelId].set(socket.id, { userId: vUserId, username: vUsername });
 
     const existingPeers = [];
     voiceRooms[channelId].forEach((data, sid) => {
       if (sid !== socket.id) {
         const uid = typeof data === 'string' ? data : data.userId;
         const uname = typeof data === 'string' ? 'Unknown' : data.username;
-        const umuted = typeof data === 'string' ? false : data.isMuted;
-        const udeafened = typeof data === 'string' ? false : data.isDeafened;
-        existingPeers.push({ socketId: sid, userId: uid, username: uname, isMuted: umuted, isDeafened: udeafened });
+        existingPeers.push({ socketId: sid, userId: uid, username: uname });
       }
     });
     socket.emit('existing-peers', { peers: existingPeers });
@@ -227,9 +225,7 @@ io.on('connection', async (socket) => {
     socket.to(channelId).emit('user-joined', {
       socketId: socket.id,
       userId: vUserId,
-      username: vUsername,
-      isMuted: vIsMuted,
-      isDeafened: vIsDeafened,
+      username: vUsername
     });
 
     console.log(`[voice] ${vUserId} (${vUsername}) joined channel ${channelId}`);
@@ -245,32 +241,6 @@ io.on('connection', async (socket) => {
  
   socket.on('ice-candidate', ({ to, candidate }) => {
     io.to(to).emit('ice-candidate', { from: socket.id, candidate });
-  });
-
-  socket.on('user-muted', ({ channelId, userId: vUserId, isMuted: vIsMuted }) => {
-    // Update voice room state
-    if (voiceRooms[channelId]) {
-      const userData = voiceRooms[channelId].get(socket.id);
-      if (userData) {
-        voiceRooms[channelId].set(socket.id, { ...userData, isMuted: vIsMuted });
-      }
-    }
-    // Broadcast to all users in channel
-    io.to(channelId).emit('user-muted', { socketId: socket.id, isMuted: vIsMuted });
-    console.log(`[voice] ${vUserId} ${vIsMuted ? 'muted' : 'unmuted'} in channel ${channelId}`);
-  });
-
-  socket.on('user-deafened', ({ channelId, userId: vUserId, isDeafened: vIsDeafened }) => {
-    // Update voice room state
-    if (voiceRooms[channelId]) {
-      const userData = voiceRooms[channelId].get(socket.id);
-      if (userData) {
-        voiceRooms[channelId].set(socket.id, { ...userData, isDeafened: vIsDeafened });
-      }
-    }
-    // Broadcast to all users in channel
-    io.to(channelId).emit('user-deafened', { socketId: socket.id, isDeafened: vIsDeafened });
-    console.log(`[voice] ${vUserId} ${vIsDeafened ? 'deafened' : 'undeafened'} in channel ${channelId}`);
   });
  
   socket.on('leave-voice', ({ channelId, userId: vUserId }) => {
