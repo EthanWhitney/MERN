@@ -1,4 +1,6 @@
 const request = require('supertest');
+const { MongoClient } = require('mongodb');
+
 let app, httpServer;
 
 beforeAll(() => {
@@ -29,17 +31,29 @@ describe('Auth & User Management', () => {
     expect([201, 400, 409]).toContain(res.status); 
   });
 
-    test('2. POST /api/auth/login - Login User', async () => {
-        const res = await request(app)
-        .post(`${BASE}/auth/login`)
-        .send({ emailOrUsername: 'ryguy', password: 'anakin' });
-        
-        expect(res.status).toBe(200);
-        expect(res.body.accessToken).toBeDefined();
-        
-        token = res.body.accessToken; 
-        aliceId = res.body.userId;
-    });
+  test('Force Verify Test User in Database', async () => {
+    const client = new MongoClient(process.env.MONGODB_URI);
+    await client.connect();
+    const db = client.db('discord_clone');
+    const unverified = await db.collection('unverifiedUsers').findOne({ email: uniqueEmail });
+    if (unverified) {
+      await db.collection('users').insertOne(unverified);
+      await db.collection('unverifiedUsers').deleteOne({ email: uniqueEmail });
+    }
+    await client.close();
+  });
+
+  test('2. POST /api/auth/login - Login User', async () => {
+    const res = await request(app)
+      .post(`${BASE}/auth/login`)
+      .send({ emailOrUsername: uniqueEmail, password: testPassword });
+    
+    expect(res.status).toBe(200);
+    expect(res.body.accessToken).toBeDefined();
+    
+    token = res.body.accessToken; 
+    aliceId = res.body.userId;
+  });
 
   test('3. GET /api/users/:userId - Get User Profile', async () => {
     const res = await request(app)
@@ -139,6 +153,7 @@ describe('Server Membership', () => {
   });
 });
 
+// ── 5. SERVER ROLES ────────────────────────────────────────────────────────────
 describe('Server Roles', () => {
   test('19. POST /api/servers/:serverId/roles - Create Role', async () => {
     const res = await request(app)
@@ -276,32 +291,6 @@ describe('Messages', () => {
       .patch(`${BASE}/servers/${serverId}/textChannels/${tcId}/messages/${msgId}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ content: 'First message! (edited)' });
-    expect(res.status).toBe(200);
-  });
-});
-
-describe('Server Settings & Moderation', () => {
-  test.skip('37. PATCH /api/servers/:serverId/members/:userId/mute - Mute User', async () => {
-    const res = await request(app)
-      .patch(`${BASE}/servers/${serverId}/members/${BOB_ID}/mute`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ isMuted: true });
-    expect(res.status).toBe(200);
-  });
-
-  test.skip('38. PATCH /api/servers/:serverId/members/:userId/deafen - Deafen User', async () => {
-    const res = await request(app)
-      .patch(`${BASE}/servers/${serverId}/members/${BOB_ID}/deafen`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ isDeafened: true });
-    expect(res.status).toBe(200);
-  });
-
-  test.skip('39. PATCH /api/servers/:serverId/members/:userId/timeout - Timeout User', async () => {
-    const res = await request(app)
-      .patch(`${BASE}/servers/${serverId}/members/${BOB_ID}/timeout`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ isTimedOut: true, duration: 60 });
     expect(res.status).toBe(200);
   });
 });
