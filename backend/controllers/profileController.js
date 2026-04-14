@@ -20,8 +20,8 @@ const updateProfilePicture = async (req, res) => {
   const { profilePicture } = req.body;
   let error = '';
 
-  if (!profilePicture) {
-    error = 'Profile picture is required';
+  if (profilePicture === undefined) {
+    error = 'Profile picture field is required';
     return res.status(400).json({ success: false, error });
   }
 

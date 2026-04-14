@@ -84,13 +84,17 @@
   flex: 1;
   overflow: hidden;
   display: flex;
+  flex-direction: row;
+  height: 100%;
 }
 
 /* Tab Layout */
 .settings-tabs {
   display: flex;
+  flex-direction: row;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .tab-bar {
@@ -101,6 +105,9 @@
   border-right: 1px solid #202225;
   padding: 8px 0;
   gap: 4px;
+  min-height: 0;
+  flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .tab-button {
@@ -132,8 +139,14 @@
 
 .tab-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
 }
 
 /* Settings Panel */
@@ -141,6 +154,9 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
 }
 
 .settings-panel h3 {
@@ -155,15 +171,20 @@
 /* Avatar Grid */
 .avatar-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 80px));
+  gap: 24px;
+  width: 100%;
+  justify-content: start;
+  align-items: center;
 }
 
 .avatar-option {
   position: relative;
+  width: 80px;
+  height: 80px;
   background: #23272a;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 50%;
   padding: 0;
   cursor: pointer;
   overflow: hidden;
@@ -175,6 +196,21 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.initials-option {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #23272a;
+  color: #dcddde;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px;
+  box-sizing: border-box;
 }
 
 .avatar-option:hover {
@@ -275,6 +311,30 @@
 }
 
 .delete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.logout-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+  background: #72767d;
+  color: #fff;
+}
+
+.logout-button:hover:not(:disabled) {
+  background: #5f6368;
+  box-shadow: 0 2px 8px rgba(114, 118, 125, 0.4);
+}
+
+.logout-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
