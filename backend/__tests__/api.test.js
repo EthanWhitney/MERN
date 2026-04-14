@@ -20,24 +20,38 @@ let aliceId;
 const BOB_ID = '69cdc50af5a8150ba1dbe97f'; 
 let serverId, roleId, tcId, vcId, msgId;
 
-const uniqueEmail = `ryan_${Date.now()}@syncord.space`;
+const timestamp = Date.now();
+const uniqueEmail = `ryan_${timestamp}@syncord.space`;
+const uniqueUsername = `TestUser_${timestamp}`; 
 const testPassword = 'password123';
 
 describe('Auth & User Management', () => {
   test('1. POST /api/auth/register - Register User', async () => {
     const res = await request(app)
       .post(`${BASE}/auth/register`)
-      .send({ email: uniqueEmail, username: 'TestUser', password: testPassword });
-    expect([201, 400, 409]).toContain(res.status); 
+      .send({ email: uniqueEmail, username: uniqueUsername, password: testPassword });
+    expect([201, 409]).toContain(res.status); 
   });
 
   test('Force Verify Test User in Database', async () => {
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const dbUrl = process.env.MONGODB_URI || 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
+    const client = new MongoClient(dbUrl);
     await client.connect();
     const db = client.db('discord_clone');
+    
     const unverified = await db.collection('unverifiedUsers').findOne({ email: uniqueEmail });
     if (unverified) {
-      await db.collection('users').insertOne(unverified);
+      const newUser = {
+        email: unverified.email,
+        username: unverified.username,
+        hashedPassword: unverified.hashedPassword,
+        profilePicture: '',
+        servers: [],
+        friends: [],
+        active: true,
+        createdAt: unverified.createdAt
+      };
+      await db.collection('users').insertOne(newUser);
       await db.collection('unverifiedUsers').deleteOne({ email: uniqueEmail });
     }
     await client.close();
@@ -66,7 +80,7 @@ describe('Auth & User Management', () => {
     const res = await request(app)
       .patch(`${BASE}/users/${aliceId}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ username: 'UpdatedTestUser' });
+      .send({ username: `Updated_${timestamp}` });
     expect(res.status).toBe(200);
   });
 });
