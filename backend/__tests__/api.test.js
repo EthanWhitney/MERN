@@ -222,7 +222,7 @@ describe('Text Channels', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ channelName: 'announcements' });
     expect(res.status).toBe(201);
-    tcId = res.body.channel.channelID;
+    tcId = res.body.textChannel._id;
   });
 
   test('24. GET /api/servers/:serverId/textChannels - Get Text Channels', async () => {
