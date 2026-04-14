@@ -1,0 +1,254 @@
+/**
+ * Modal Mobile Responsive Styles
+ * Ensures modals work properly on all screen sizes with safe area support
+ */
+
+/* ============================================
+   GLOBAL MODAL BACKDROP
+   ============================================ */
+
+/* Applies to all modal overlays */
+.modal-backdrop,
+[role="dialog"] + div,
+.overlay {
+  position: fixed;
+  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 
+           env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+
+/* ============================================
+   BASE MODAL DIALOG STYLES
+   ============================================ */
+
+/* Generic modal dialog container */
+[role="dialog"],
+.modal-content,
+.modal-dialog {
+  background: white;
+  border-radius: 8px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+}
+
+/* iOS specific: add notch-aware padding */
+@supports (padding: max(0px)) {
+  [role="dialog"],
+  .modal-content,
+  .modal-dialog {
+    padding-top: max(24px, env(safe-area-inset-top, 0));
+    padding-right: max(24px, env(safe-area-inset-right, 0));
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0));
+    padding-left: max(24px, env(safe-area-inset-left, 0));
+  }
+}
+
+/* ============================================
+   MOBILE BREAKPOINT: 540px
+   ============================================ */
+
+@media (max-width: 540px) {
+  [role="dialog"],
+  .modal-content,
+  .modal-dialog {
+    width: 95%;
+    max-width: calc(100% - 16px);
+    max-height: min(90dvh, 600px);
+    margin: 8px;
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  @supports (padding: max(0px)) {
+    [role="dialog"],
+    .modal-content,
+    .modal-dialog {
+      padding-top: max(20px, env(safe-area-inset-top, 12px));
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 12px));
+    }
+  }
+}
+
+/* ============================================
+   SMALL MOBILE BREAKPOINT: 375px
+   ============================================ */
+
+@media (max-width: 375px) {
+  [role="dialog"],
+  .modal-content,
+  .modal-dialog {
+    width: 90%;
+    max-width: 100%;
+    max-height: min(85dvh, 500px);
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  @supports (padding: max(0px)) {
+    [role="dialog"],
+    .modal-content,
+    .modal-dialog {
+      padding-top: max(16px, env(safe-area-inset-top, 8px));
+      padding-bottom: max(16px, env(safe-area-inset-bottom, 8px));
+    }
+  }
+}
+
+/* ============================================
+   MODAL HEADER & TITLE
+   ============================================ */
+
+.modal-header,
+[role="dialog"] h1,
+[role="dialog"] h2,
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  word-break: break-word;
+}
+
+@media (max-width: 540px) {
+  .modal-header,
+  [role="dialog"] h1,
+  [role="dialog"] h2,
+  .modal-title {
+    font-size: 1.1rem;
+  }
+}
+
+/* ============================================
+   MODAL CLOSE/ACTION BUTTONS
+   ============================================ */
+
+.modal-close-btn,
+.modal-btn-close,
+[aria-label="Close"] {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #999;
+  border-radius: 4px;
+}
+
+.modal-close-btn:hover,
+.modal-btn-close:hover,
+[aria-label="Close"]:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.modal-close-btn:active,
+.modal-btn-close:active,
+[aria-label="Close"]:active {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   MODAL BODY & CONTENT
+   ============================================ */
+
+.modal-body {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin-bottom: 16px;
+}
+
+/* ============================================
+   MODAL FOOTER & BUTTONS
+   ============================================ */
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.modal-footer button {
+  flex: 1;
+  min-width: 100px;
+  min-height: 44px;
+}
+
+@media (max-width: 540px) {
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-footer button {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* ============================================
+   FORM ELEMENTS IN MODALS
+   ============================================ */
+
+.modal-content input,
+.modal-content textarea,
+.modal-dialog input,
+.modal-dialog textarea,
+[role="dialog"] input,
+[role="dialog"] textarea {
+  font-size: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 540px) {
+  .modal-content input,
+  .modal-content textarea,
+  .modal-dialog input,
+  .modal-dialog textarea,
+  [role="dialog"] input,
+  [role="dialog"] textarea {
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+/* ============================================
+   PREVENT SCROLL WHEN MODAL OPEN
+   ============================================ */
+
+body.modal-open {
+  overflow: hidden;
+}
+
+/* ============================================
+   KEYBOARD AWARENESS ON MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+  [role="dialog"],
+  .modal-content,
+  .modal-dialog {
+    max-height: min(90dvh, 90dvw);
+  }
+}

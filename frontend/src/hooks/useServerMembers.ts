@@ -91,13 +91,47 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
       });
     };
 
+    const handleMemberJoined = (memberData: any) => {
+      // Add the new member to the members list
+      const newMember: MemberProfile = {
+        userId: memberData.userId,
+        username: memberData.username,
+        profilePicture: memberData.profilePicture,
+        serverSpecificName: memberData.serverSpecificName,
+      };
+      setMembers(prev => {
+        // Avoid duplicates
+        if (prev.some(m => m.userId === memberData.userId)) {
+          return prev;
+        }
+        return [...prev, newMember];
+      });
+      // Mark as online since they just joined
+      setOnlineUserIds(prev => new Set([...prev, memberData.userId]));
+    };
+
+    const handleMemberLeft = ({ userId }: { userId: string }) => {
+      // Remove the member from the members list
+      setMembers(prev => prev.filter(m => m.userId !== userId));
+      // Remove from online set
+      setOnlineUserIds(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    };
+
     socket.on('member-online', handleOnline);
     socket.on('member-offline', handleOffline);
+    socket.on('member-joined-server', handleMemberJoined);
+    socket.on('member-left-server', handleMemberLeft);
 
     return () => {
       cancelled = true;
       socket.off('member-online', handleOnline);
       socket.off('member-offline', handleOffline);
+      socket.off('member-joined-server', handleMemberJoined);
+      socket.off('member-left-server', handleMemberLeft);
     };
   }, [serverId]);
 

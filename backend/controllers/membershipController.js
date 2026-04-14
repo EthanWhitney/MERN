@@ -68,9 +68,18 @@ const joinServer = async (req, res) => {
       ),
       db.collection('users').updateOne(
         { _id: userObjId },
-        { $addToSet: { servers: serverId } }
+        { $addToSet: { servers: serverObjId } }
       ),
     ]);
+
+    // Notify other users that a new member joined
+    socketManager.broadcastMemberJoinedServer(serverId, {
+      userId: userId,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      serverSpecificName: user.username,
+      joinedAt: newProfile.joinedAt,
+    });
 
     return res.status(201).json({
       serverProfile: { ...newProfile, _id: result.insertedId },
@@ -99,7 +108,7 @@ const leaveServer = async (req, res) => {
     const userObjId = new ObjectId(userId);
 
     await Promise.all([
-      db.collection('serverProfiles').deleteOne({
+      db.collection('serverProfiles').deleteMany({
         serverId: serverObjId,
         userId: userObjId,
       }),
@@ -112,6 +121,9 @@ const leaveServer = async (req, res) => {
         { $pull: { servers: serverObjId } }
       ),
     ]);
+
+    // Notify other users that a member left
+    socketManager.broadcastMemberLeftServer(serverId, userId);
 
     return res.status(200).json({ message: 'Left server successfully', error: '' });
   } catch (e) {

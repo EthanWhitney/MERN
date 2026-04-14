@@ -239,12 +239,16 @@
 .friend-meta h2 {
   margin: 0;
   font-size: 1.05rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .friend-meta p {
   margin: 4px 0 0;
   font-size: 0.85rem;
   color: #949ba4;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .friend-actions {
@@ -338,13 +342,21 @@
 }
 
 @media (max-width: 540px) {
-  .friends-panel.hidden {
+  .friends-panel.mobile-hidden {
     display: none;
   }
 
   .friends-controls {
     flex-direction: row;
     align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .friends-search {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 0.9rem;
   }
 
   .friend-card {

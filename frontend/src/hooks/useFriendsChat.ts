@@ -12,6 +12,8 @@ import {
   offFriendRequestAccepted,
   onFriendRequestDeclined,
   offFriendRequestDeclined,
+  onFriendRemoved,
+  offFriendRemoved,
   onUserOnline,
   offUserOnline,
   onUserOffline,
@@ -218,6 +220,39 @@ export const useFriendsChat = (recipientId?: string) => {
       offFriendRequestDeclined(handleFriendRequestDeclined);
     };
   }, [userId]);
+
+  // Listen for friend removal notifications
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleFriendRemoved = (data: any) => {
+      const removedFriendId = data?.removedFriendId;
+      
+      // Remove the friend from friends list
+      setFriends(prevFriends =>
+        prevFriends.filter(friend => friend._id !== removedFriendId)
+      );
+      
+      // Clear chat if the removed friend was selected
+      if (selectedFriend?._id === removedFriendId) {
+        setSelectedFriend(null);
+        setMessages([]);
+        setOldestMessageTime(null);
+      }
+      
+      // Reload friends and pending requests
+      reloadFriendsData();
+    };
+
+    // Register listener immediately (no delay)
+    onFriendRemoved(handleFriendRemoved);
+
+    return () => {
+      offFriendRemoved(handleFriendRemoved);
+    };
+  }, [userId, selectedFriend]);
 
   // Listen for user online notifications
   useEffect(() => {
@@ -589,6 +624,39 @@ export const useFriendsChat = (recipientId?: string) => {
     }
   };
 
+  // Remove a friend (also deletes all DM history with that friend)
+  const removeFriend = async (friendId: string): Promise<boolean> => {
+    try {
+      const response = await authFetch(
+        `api/users/friends/${friendId}`,
+        {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      if (!response.ok) {
+        const errorPayload = await response.json();
+        throw new Error(errorPayload.error || 'Failed to remove friend');
+      }
+
+      // Remove friend from friends list
+      setFriends(prev => prev.filter(friend => friend._id !== friendId));
+      
+      // Clear chat if the removed friend was selected
+      if (selectedFriend?._id === friendId) {
+        setSelectedFriend(null);
+        setMessages([]);
+        setOldestMessageTime(null);
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error('Error removing friend:', err);
+      throw new Error(err?.message || 'Failed to remove friend');
+    }
+  };
+
   return {
     userId,
     friends,
@@ -605,6 +673,7 @@ export const useFriendsChat = (recipientId?: string) => {
     addFriend,
     acceptFriendRequest,
     declineFriendRequest,
+    removeFriend,
     editMessage,
     deleteMessage,
     loadMoreMessages: async () => {

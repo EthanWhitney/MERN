@@ -146,6 +146,16 @@ const removeFriend = async (req, res) => {
       })
     ]);
 
+    // Notify both users that the friend was removed
+    socketManager.notifyFriendRemoved(userId, {
+      removedFriendId: friendId,
+      timestamp: new Date()
+    });
+    socketManager.notifyFriendRemoved(friendId, {
+      removedFriendId: userId,
+      timestamp: new Date()
+    });
+
     const updatedUser = await db.collection('users').findOne({ _id: userObjId });
     const friendIds = updatedUser.friends || [];
     const friendProfiles = await db

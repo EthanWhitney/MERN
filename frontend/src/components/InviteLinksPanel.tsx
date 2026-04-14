@@ -77,10 +77,6 @@ const InviteLinksPanel: React.FC<InviteLinksPanelProps> = ({ serverId, onClose }
     return `${daysLeft} days`;
   };
 
-  const isExpired = (expiresAt?: string): boolean => {
-    if (!expiresAt) return false;
-    return new Date(expiresAt) < new Date();
-  };
 
   if (showCreateModal) {
     return (
@@ -116,8 +112,6 @@ const InviteLinksPanel: React.FC<InviteLinksPanelProps> = ({ serverId, onClose }
           ) : (
             <div className="invite-links-list">
               {links.filter(link => !link.isRevoked).map(link => {
-                const expired = isExpired(link.expiresAt);
-                const maxReached = !!(link.maxUses && link.currentUses >= link.maxUses);
                 const isDisabled = false;
 
                 return (

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import './UserControlsOverlay.css';
 import { authFetch } from '../utils/authFetch';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
+import FriendsList from './FriendsList';
 
 interface UserControlsOverlayProps {
   onClose: () => void;
@@ -10,7 +11,7 @@ interface UserControlsOverlayProps {
   onProfileUpdate?: () => void;
 }
 
-type TabType = 'account' | 'server';
+type TabType = 'account' | 'server' | 'friends';
 
 const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfileUpdate }: UserControlsOverlayProps) => {
   const [activeTab, setActiveTab] = useState<TabType>('account');
@@ -202,6 +203,12 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
                   Server Profile
                 </button>
               )}
+              <button
+                className={`tab-button ${activeTab === 'friends' ? 'active' : ''}`}
+                onClick={() => setActiveTab('friends')}
+              >
+                Friends
+              </button>
             </div>
 
             <div className="tab-content">
@@ -278,6 +285,11 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
                     {loadingServerProfile ? 'Saving...' : 'Save Server Profile'}
                   </button>
                 </div>
+              )}
+
+              {/* Friends Tab */}
+              {activeTab === 'friends' && (
+                <FriendsList />
               )}
 
               {/* Error and Success Messages */}

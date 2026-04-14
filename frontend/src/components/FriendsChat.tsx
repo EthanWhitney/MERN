@@ -18,9 +18,11 @@ interface FriendsChatProps {
   activeTab: 'online' | 'all' | 'requests';
   onTabChange: (tab: 'online' | 'all' | 'requests') => void;
   onSelectFriend?: (friend: Friend) => void;
+  showChatOnMobile?: boolean;
+  onBack?: () => void;
 }
 
-const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, onSelectFriend }: FriendsChatProps) => {
+const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, onSelectFriend, showChatOnMobile, onBack }: FriendsChatProps) => {
   const {
     messages,
     loading,
@@ -117,34 +119,56 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
   const { friends } = useFriendsChat();
 
   return (
-    <div className="chat-area">
+    <div className={`chat-area ${showChatOnMobile ? 'mobile-active' : ''}`}>
       <header className="friends-main-header">
         <div className="friends-main-header-left">
+          {showChatOnMobile ? (
+            <button 
+              className="friends-back-btn" 
+              onClick={onBack}
+              type="button"
+              aria-label="Back to friends list"
+            >
+              ← Back
+            </button>
+          ) : (
+            <button
+              className="friends-menu-btn"
+              onClick={onBack}
+              type="button"
+              aria-label="Toggle friends list"
+              title="Open friends"
+            >
+              ☰
+            </button>
+          )}
           <span className="friends-main-title">Friends</span>
         </div>
-        <nav className="friends-main-tabs" aria-label="Friends tabs">
-          <button
-            className={`friends-main-tab ${activeTab === 'online' ? 'friends-main-tab-active' : ''}`}
-            type="button"
-            onClick={() => onTabChange('online')}
-          >
-            Online
-          </button>
-          <button
-            className={`friends-main-tab ${activeTab === 'all' ? 'friends-main-tab-active' : ''}`}
-            type="button"
-            onClick={() => onTabChange('all')}
-          >
-            All
-          </button>
-          <button
-            className={`friends-main-tab ${activeTab === 'requests' ? 'friends-main-tab-active' : ''}`}
-            type="button"
-            onClick={() => onTabChange('requests')}
-          >
-            Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
-          </button>
-        </nav>
+        {!showChatOnMobile && (
+          <nav className="friends-main-tabs" aria-label="Friends tabs">
+            <button
+              className={`friends-main-tab ${activeTab === 'online' ? 'friends-main-tab-active' : ''}`}
+              type="button"
+              onClick={() => onTabChange('online')}
+            >
+              Online
+            </button>
+            <button
+              className={`friends-main-tab ${activeTab === 'all' ? 'friends-main-tab-active' : ''}`}
+              type="button"
+              onClick={() => onTabChange('all')}
+            >
+              All
+            </button>
+            <button
+              className={`friends-main-tab ${activeTab === 'requests' ? 'friends-main-tab-active' : ''}`}
+              type="button"
+              onClick={() => onTabChange('requests')}
+            >
+              Requests {pendingRequests.length > 0 && `(${pendingRequests.length})`}
+            </button>
+          </nav>
+        )}
       </header>
 
       {activeTab === 'requests' ? (

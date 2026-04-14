@@ -4,7 +4,7 @@ const { MongoClient, ObjectId } = require('mongodb');
 const jwtManager = require('../createJWT');
 const { generateVerificationCode } = require('../utils/codeGenerator');
 const sgMail = require('@sendgrid/mail');
-const { getVerificationCodeEmailTemplate, getVerificationCodeEmailTextTemplate } = require('../utils/emailTemplates');
+const { getVerificationCodeEmailTemplate, getVerificationCodeEmailTextTemplate, getPasswordResetEmailTemplate, getPasswordResetEmailTextTemplate } = require('../utils/emailTemplates');
 
 require('dotenv').config();
 
@@ -609,6 +609,188 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// Request password reset - generate code and send email
+const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  let error = '';
+
+  try {
+    if (!email) {
+      error = 'Email is required';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const db = client.db('discord_clone');
+    const lowerEmail = email.toLowerCase();
+
+    // Check if user exists
+    const user = await db.collection('users').findOne({ email: lowerEmail });
+    if (!user) {
+      error = 'No account found with that email address';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // Generate password reset code
+    const resetCode = generateVerificationCode();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes
+
+    // Store reset code in passwordResetCodes collection
+    await db.collection('passwordResetCodes').updateOne(
+      { email: lowerEmail },
+      {
+        $set: {
+          email: lowerEmail,
+          resetCode: resetCode,
+          expiresAt: expiresAt,
+          createdAt: now
+        }
+      },
+      { upsert: true }
+    );
+
+    // Send password reset email
+    try {
+      const emailHtml = getPasswordResetEmailTemplate(user.username, resetCode, 15);
+      const emailText = getPasswordResetEmailTextTemplate(user.username, resetCode, 15);
+
+      const msg = {
+        to: lowerEmail,
+        from: 'syncord.space@gmail.com',
+        subject: 'Reset Your Password - Syncord',
+        text: emailText,
+        html: emailHtml
+      };
+
+      await sgMail.send(msg);
+    } catch (emailError) {
+      // Continue anyway - reset code is still stored
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password reset code has been sent to your email',
+      error: '' 
+    });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ success: false, error });
+  }
+};
+
+// Verify password reset code
+const verifyResetCode = async (req, res) => {
+  const { email, code } = req.body;
+  let error = '';
+
+  try {
+    if (!email || !code) {
+      error = 'Email and code are required';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const db = client.db('discord_clone');
+    const lowerEmail = email.toLowerCase();
+
+    // Find password reset code
+    const resetRecord = await db.collection('passwordResetCodes').findOne({ email: lowerEmail });
+
+    if (!resetRecord) {
+      error = 'No password reset code found. Please request a new one.';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // Check if code has expired
+    if (new Date() > new Date(resetRecord.expiresAt)) {
+      error = 'Password reset code has expired. Please request a new one.';
+      return res.status(401).json({ success: false, error });
+    }
+
+    // Check if code matches
+    if (code.toUpperCase() !== resetRecord.resetCode.toUpperCase()) {
+      error = 'Invalid password reset code. Please try again.';
+      return res.status(401).json({ success: false, error });
+    }
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password reset code verified successfully',
+      error: '' 
+    });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ success: false, error });
+  }
+};
+
+// Reset password with verified code
+const resetPassword = async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  let error = '';
+
+  try {
+    if (!email || !code || !newPassword) {
+      error = 'Email, code, and new password are required';
+      return res.status(400).json({ success: false, error });
+    }
+
+    // Validate password length
+    if (newPassword.length < 6) {
+      error = 'Password must be at least 6 characters long';
+      return res.status(400).json({ success: false, error });
+    }
+
+    const db = client.db('discord_clone');
+    const lowerEmail = email.toLowerCase();
+
+    // Verify reset code again
+    const resetRecord = await db.collection('passwordResetCodes').findOne({ email: lowerEmail });
+
+    if (!resetRecord) {
+      error = 'No password reset code found. Please request a new one.';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // Check if code has expired
+    if (new Date() > new Date(resetRecord.expiresAt)) {
+      error = 'Password reset code has expired. Please request a new one.';
+      return res.status(401).json({ success: false, error });
+    }
+
+    // Check if code matches
+    if (code.toUpperCase() !== resetRecord.resetCode.toUpperCase()) {
+      error = 'Invalid password reset code. Please try again.';
+      return res.status(401).json({ success: false, error });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user's password
+    const updateResult = await db.collection('users').updateOne(
+      { email: lowerEmail },
+      { $set: { hashedPassword: hashedPassword } }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      error = 'User not found';
+      return res.status(404).json({ success: false, error });
+    }
+
+    // Delete the reset code record
+    await db.collection('passwordResetCodes').deleteOne({ email: lowerEmail });
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password has been reset successfully',
+      error: '' 
+    });
+  } catch (e) {
+    error = e.toString();
+    return res.status(500).json({ success: false, error });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -618,5 +800,8 @@ module.exports = {
   resendVerificationCode,
   refreshAccessToken,
   recoverAccount,
-  deleteAccount
+  deleteAccount,
+  requestPasswordReset,
+  verifyResetCode,
+  resetPassword
 };

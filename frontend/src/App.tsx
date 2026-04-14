@@ -5,6 +5,7 @@ import Token from './components/Token';
 import Register from './components/Register';
 import VerifyCode from './components/VerifyCode.tsx';
 import LoginPage from './pages/LoginPage';
+import PasswordResetPage from './pages/PasswordResetPage';
 import CardPage from './pages/CardPage';
 import ChatPage from './pages/ChatPage';
 import FriendsPage from './pages/FriendsPage';
@@ -48,6 +49,7 @@ function App() {
         <Route path="/" element={<LoginPage/>}/>
         <Route path="/login" element={<LoginPage/>}/>
         <Route path="/register" element={<Register/>}/>
+        <Route path="/password-reset" element={<PasswordResetPage/>}/>
         <Route path="/join/:linkCode" element={<JoinPage/>}/>
         <Route path="/friends" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>
         <Route path="/friends/requests" element={<ProtectedRoute><FriendsPage/></ProtectedRoute>}/>

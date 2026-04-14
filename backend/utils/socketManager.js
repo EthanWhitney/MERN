@@ -40,6 +40,9 @@ const notifyFriendRequestDeclined = (userId, data) => {
   emitToUser(userId, 'friend-request-declined', data);
 };
 
+const notifyFriendRemoved = (userId, data) => {
+  emitToUser(userId, 'friend-removed', data);
+};
 
 const notifyUserOnline = (userId, friends) => {
   if (!friends || friends.length === 0) return;
@@ -81,6 +84,18 @@ const broadcastToVoiceChannel = (channelId, event, data) => {
   }
 };
 
+const broadcastMemberJoinedServer = (serverId, memberData) => {
+  if (io) {
+    io.to(`server-presence:${serverId}`).emit('member-joined-server', memberData);
+  }
+};
+
+const broadcastMemberLeftServer = (serverId, userId) => {
+  if (io) {
+    io.to(`server-presence:${serverId}`).emit('member-left-server', { userId });
+  }
+};
+
 module.exports = {
   setSocketIO,
   getIO,
@@ -90,9 +105,12 @@ module.exports = {
   notifyFriendRequest,
   notifyFriendRequestAccepted,
   notifyFriendRequestDeclined,
+  notifyFriendRemoved,
   notifyUserOnline,
   notifyUserOffline,
   broadcastMessageToServerChannel,
   getVoiceRoomMembers,
   broadcastToVoiceChannel,
+  broadcastMemberJoinedServer,
+  broadcastMemberLeftServer,
 };

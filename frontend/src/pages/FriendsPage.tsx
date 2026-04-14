@@ -20,6 +20,7 @@ const FriendsPage = () => {
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeTab, setActiveTab] = useState<'online' | 'all' | 'requests'>('all');
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
 
   // Detect if we're on the requests page based on URL
   useEffect(() => {
@@ -71,6 +72,7 @@ const FriendsPage = () => {
   // When friend is selected, navigate to their URL and switch away from All tab
   const handleSelectFriend = (friend: Friend) => {
     setSelectedFriend(friend);
+    setShowChatOnMobile(true);
     if (activeTab === 'online') {
       navigate(`/friends/online/${friend._id}`);
     } else {
@@ -80,6 +82,7 @@ const FriendsPage = () => {
 
   const handleTabChange = (tab: 'online' | 'all' | 'requests') => {
     setActiveTab(tab);
+    setShowChatOnMobile(false);
     if (tab === 'all') {
       setSelectedFriend(null);
       navigate('/friends');
@@ -99,6 +102,7 @@ const FriendsPage = () => {
         selectedFriend={selectedFriend} 
         onSelectFriend={handleSelectFriend}
         activeTab={activeTab}
+        showChatOnMobile={showChatOnMobile}
       />
       <FriendsChat 
         selectedFriend={selectedFriend} 
@@ -106,6 +110,8 @@ const FriendsPage = () => {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onSelectFriend={handleSelectFriend}
+        showChatOnMobile={showChatOnMobile}
+        onBack={() => setShowChatOnMobile(false)}
       />
     </div>
   );

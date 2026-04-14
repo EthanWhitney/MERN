@@ -26,4 +26,13 @@ router.post('/refresh', authController.refreshAccessToken);
 // POST /api/auth/recover-account
 router.post('/recover-account', authController.recoverAccount);
 
+// POST /api/auth/request-password-reset
+router.post('/request-password-reset', authController.requestPasswordReset);
+
+// POST /api/auth/verify-reset-code
+router.post('/verify-reset-code', authController.verifyResetCode);
+
+// POST /api/auth/reset-password
+router.post('/reset-password', authController.resetPassword);
+
 module.exports = router;

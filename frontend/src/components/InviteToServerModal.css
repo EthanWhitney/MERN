@@ -26,10 +26,21 @@
   width: 90%;
   max-width: 480px;
   max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Mobile Responsive */
+@media (max-width: 540px) {
+  .invite-modal {
+    width: calc(100% - 32px);
+    max-width: 100%;
+    margin: 16px;
+    max-height: calc(100dvh - 32px);
+  }
 }
 
 @keyframes slideUp {

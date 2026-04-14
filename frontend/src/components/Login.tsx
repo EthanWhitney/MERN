@@ -96,7 +96,8 @@ function Login()
 
       <span id="loginResult">{message}</span><br />
 
-      <a href="/register">Don't have an account? Register here</a>
+      <a href="/register">Don't have an account? Register here</a><br/>
+      <a href="/password-reset">Forgot your password? Reset it here</a>
     </div>
   );
 }

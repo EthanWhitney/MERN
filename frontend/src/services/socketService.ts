@@ -208,6 +208,18 @@ export const offFriendRequestDeclined = (callback: (data: any) => void) => {
   socket.off('friend-request-declined', callback);
 };
 
+export const onFriendRemoved = (callback: (data: any) => void) => {
+  if (!socket) {
+    return;
+  }
+  socket.on('friend-removed', callback);
+};
+
+export const offFriendRemoved = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('friend-removed', callback);
+};
+
 // User online/offline handlers
 export const onUserOnline = (callback: (data: any) => void) => {
   if (!socket) {
@@ -231,4 +243,29 @@ export const onUserOffline = (callback: (data: any) => void) => {
 export const offUserOffline = (callback: (data: any) => void) => {
   if (!socket) return;
   socket.off('user-offline', callback);
+};
+
+// Server member join/leave handlers
+export const onMemberJoinedServer = (callback: (data: any) => void) => {
+  if (!socket) {
+    return;
+  }
+  socket.on('member-joined-server', callback);
+};
+
+export const offMemberJoinedServer = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('member-joined-server', callback);
+};
+
+export const onMemberLeftServer = (callback: (data: any) => void) => {
+  if (!socket) {
+    return;
+  }
+  socket.on('member-left-server', callback);
+};
+
+export const offMemberLeftServer = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('member-left-server', callback);
 };
