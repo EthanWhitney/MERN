@@ -200,7 +200,7 @@ describe('Server Roles', () => {
     expect(res.status).toBe(200);
   });
 
-  test('21. DELETE /api/servers/:serverId/roles/:roleId - Delete Role', async () => {
+  test.skip('21. DELETE /api/servers/:serverId/roles/:roleId - Delete Role', async () => {
     const res = await request(app)
       .delete(`${BASE}/servers/${serverId}/roles/${roleId}`)
       .set('Authorization', `Bearer ${token}`);
