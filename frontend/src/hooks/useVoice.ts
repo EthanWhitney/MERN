@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocket, initSocket } from '../services/socketService';
 
@@ -244,52 +244,67 @@ export const useVoice = (channelId: string, userId: string) => {
     };
   }, [channelId, userId]);
 
-  // Control methods for mute/deafen
-  const muteAudio = () => {
+  // Control methods for mute/deafen - wrapped in useCallback for stable references
+  const muteAudio = useCallback(() => {
     setIsMuted(true);
     audioTracksRef.current.forEach(track => {
       track.enabled = false;
     });
-    saveVoiceSettings(true, isDeafened);
+    // Read deafened state using ref to avoid stale closure
+    const deafenedState = localStorage.getItem('voiceSettings') 
+      ? JSON.parse(localStorage.getItem('voiceSettings')!).isDeafened 
+      : false;
+    saveVoiceSettings(true, deafenedState);
     if (socketRef.current) {
       socketRef.current.emit('user-muted', { channelId, userId, isMuted: true });
     }
-  };
+  }, [channelId, userId]);
 
-  const unmuteAudio = () => {
+  const unmuteAudio = useCallback(() => {
     setIsMuted(false);
+    // Read deafened state to properly enable tracks
+    const deafenedState = localStorage.getItem('voiceSettings') 
+      ? JSON.parse(localStorage.getItem('voiceSettings')!).isDeafened 
+      : false;
     audioTracksRef.current.forEach(track => {
-      track.enabled = !isDeafened; // Only enable if not deafened
+      track.enabled = !deafenedState; // Only enable if not deafened
     });
-    saveVoiceSettings(false, isDeafened);
+    saveVoiceSettings(false, deafenedState);
     if (socketRef.current) {
       socketRef.current.emit('user-muted', { channelId, userId, isMuted: false });
     }
-  };
+  }, [channelId, userId]);
 
-  const deafenAudio = () => {
+  const deafenAudio = useCallback(() => {
     setIsDeafened(true);
     // Disable local audio tracks (mic)
     audioTracksRef.current.forEach(track => {
       track.enabled = false;
     });
-    saveVoiceSettings(isMuted, true);
+    // Read muted state to properly save settings
+    const mutedState = localStorage.getItem('voiceSettings') 
+      ? JSON.parse(localStorage.getItem('voiceSettings')!).isMuted 
+      : false;
+    saveVoiceSettings(mutedState, true);
     if (socketRef.current) {
       socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: true });
     }
-  };
+  }, [channelId, userId]);
 
-  const undeafenAudio = () => {
+  const undeafenAudio = useCallback(() => {
     setIsDeafened(false);
-    // Re-enable audio tracks if not muted
+    // Read muted state to properly enable tracks
+    const mutedState = localStorage.getItem('voiceSettings') 
+      ? JSON.parse(localStorage.getItem('voiceSettings')!).isMuted 
+      : false;
     audioTracksRef.current.forEach(track => {
-      track.enabled = !isMuted;
+      track.enabled = !mutedState;
     });
-    saveVoiceSettings(isMuted, false);
+    saveVoiceSettings(mutedState, false);
     if (socketRef.current) {
       socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: false });
     }
-  };
+  }, [channelId, userId]);
 
   return { 
     isConnected, 
