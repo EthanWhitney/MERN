@@ -59,6 +59,7 @@ export const useFriendsChat = (recipientId?: string) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [oldestMessageTime, setOldestMessageTime] = useState<string | null>(null);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
+  const [lastActivityMap, setLastActivityMap] = useState<{ [friendId: string]: string | null }>({});
 
   const userId = useMemo(() => {
     try {
@@ -126,6 +127,39 @@ export const useFriendsChat = (recipientId?: string) => {
 
     loadFriends();
   }, [userId]);
+
+  // Load last message activity for all friends
+  useEffect(() => {
+    const loadLastActivity = async () => {
+      if (!userId || friends.length === 0) {
+        setLastActivityMap({});
+        return;
+      }
+
+      try {
+        const friendIds = friends.map((f) => f._id);
+        const response = await authFetch(`api/chat/dms/last-activity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ friendIds }),
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to load last activity');
+          return;
+        }
+
+        const payload = await response.json();
+        if (payload.activity) {
+          setLastActivityMap(payload.activity);
+        }
+      } catch (err: any) {
+        console.error('Error loading last activity:', err);
+      }
+    };
+
+    loadLastActivity();
+  }, [userId, friends]);
 
   // Load pending friend requests
   useEffect(() => {
@@ -392,6 +426,14 @@ export const useFriendsChat = (recipientId?: string) => {
     const handleReceiveMessage = (incomingMessage: any) => {
       console.log('[useFriendsChat] Received DM message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
+      
+      // Update last activity for the sender if it's a friend
+      if (incomingMessage.sender?.userId) {
+        setLastActivityMap(prevMap => ({
+          ...prevMap,
+          [incomingMessage.sender.userId]: new Date().toISOString(),
+        }));
+      }
     };
 
     onReceiveMessage(handleReceiveMessage);
@@ -434,6 +476,12 @@ export const useFriendsChat = (recipientId?: string) => {
         // Emit message via Socket.IO - let the listener handle adding to state
         // to avoid duplicate messages
         sendDMMessage(targetId, newMessage);
+        
+        // Update activity timestamp for the recipient
+        setLastActivityMap(prev => ({
+          ...prev,
+          [targetId]: new Date().toISOString()
+        }));
         
         return true;
       }
@@ -715,5 +763,6 @@ export const useFriendsChat = (recipientId?: string) => {
         setIsLoadingMore(false);
       }
     },
+    lastActivityMap,
   };
 };

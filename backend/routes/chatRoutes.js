@@ -12,6 +12,7 @@ const {
 	updateDirectMessage,
 	deleteDirectMessage,
 	getDirectConversations,
+	getLastMessageActivity,
 } = require('../controllers/chatController');
 
 // POST /api/servers/:serverId/textChannels/:channelId/messages
@@ -31,6 +32,9 @@ router.post('/api/chat/dms/:recipientId/messages', verifyToken, sendDirectMessag
 
 // GET /api/chat/dms
 router.get('/api/chat/dms', verifyToken, getDirectConversations);
+
+// POST /api/chat/dms/last-activity
+router.post('/api/chat/dms/last-activity', verifyToken, getLastMessageActivity);
 
 // GET /api/chat/dms/:recipientId/messages
 router.get('/api/chat/dms/:recipientId/messages', verifyToken, getDirectMessages);
