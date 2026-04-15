@@ -14,13 +14,15 @@ import {
   offFriendRequestDeclined,
   onFriendRemoved,
   offFriendRemoved,
+  onProfilePictureChanged,
+  offProfilePictureChanged
+} from '../services/socketService';
+import {
   onUserOnline,
   offUserOnline,
   onUserOffline,
   offUserOffline,
-  onProfilePictureChanged,
-  offProfilePictureChanged
-} from '../services/socketService';
+} from '../services/listenerRegistry';
 
 interface Friend {
   _id: string;
@@ -360,7 +362,7 @@ export const useFriendsChat = (recipientId?: string) => {
     onUserOnline(handleUserOnline);
 
     return () => {
-      offUserOnline(handleUserOnline);
+      offUserOnline();
     };
   }, [userId, selectedFriend]);
 
@@ -394,7 +396,7 @@ export const useFriendsChat = (recipientId?: string) => {
     onUserOffline(handleUserOffline);
 
     return () => {
-      offUserOffline(handleUserOffline);
+      offUserOffline();
     };
   }, [userId, selectedFriend]);
 

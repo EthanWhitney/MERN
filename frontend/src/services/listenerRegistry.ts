@@ -217,10 +217,53 @@ class ListenerRegistry {
 // These are convenience functions that use the registry to manage member presence events
 // Previously these were called directly on socket in hooks - now they're centralized
 
+let onUserOnlineHandler: ((data: any) => void) | null = null;
+let onUserOfflineHandler: ((data: any) => void) | null = null;
 let onMemberOnlineHandler: ((data: any) => void) | null = null;
 let onMemberOfflineHandler: ((data: any) => void) | null = null;
 let onMemberJoinedServerHandler: ((data: any) => void) | null = null;
 let onMemberLeftServerHandler: ((data: any) => void) | null = null;
+
+// ========== FRIEND PRESENCE EVENTS ==========
+
+export const onUserOnline = (handler: (data: any) => void): void => {
+  // If there's already a handler registered, unregister it first
+  if (onUserOnlineHandler) {
+    registry.off('user-online', onUserOnlineHandler);
+  }
+  
+  onUserOnlineHandler = handler;
+  registry.on('user-online', handler);
+  console.log('[ListenerRegistry] Registered onUserOnline handler');
+};
+
+export const offUserOnline = (): void => {
+  if (onUserOnlineHandler) {
+    registry.off('user-online', onUserOnlineHandler);
+    onUserOnlineHandler = null;
+    console.log('[ListenerRegistry] Unregistered onUserOnline handler');
+  }
+};
+
+export const onUserOffline = (handler: (data: any) => void): void => {
+  if (onUserOfflineHandler) {
+    registry.off('user-offline', onUserOfflineHandler);
+  }
+  
+  onUserOfflineHandler = handler;
+  registry.on('user-offline', handler);
+  console.log('[ListenerRegistry] Registered onUserOffline handler');
+};
+
+export const offUserOffline = (): void => {
+  if (onUserOfflineHandler) {
+    registry.off('user-offline', onUserOfflineHandler);
+    onUserOfflineHandler = null;
+    console.log('[ListenerRegistry] Unregistered onUserOffline handler');
+  }
+};
+
+// ========== SERVER MEMBER PRESENCE EVENTS ==========
 
 export const onMemberOnline = (handler: (data: any) => void): void => {
   // If there's already a handler registered, unregister it first
