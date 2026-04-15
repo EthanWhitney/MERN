@@ -15,9 +15,9 @@ const ProfileModal = ({ isOpen, onClose, onProfilePictureUpdated }: ProfileModal
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [availableAvatars] = useState<string[]>([
-    '/avatars/dog.png',
-    '/avatars/juan.png',
-    '/avatars/CoolLlama.png',
+    '/avatars/dog.jpg',
+    '/avatars/juan.jpg',
+    '/avatars/CoolLlama.jpg',
   ]);
 
   const userId = useMemo(() => {
