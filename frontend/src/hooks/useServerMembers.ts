@@ -1,7 +1,17 @@
 // src/hooks/useServerMembers.ts
 import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '../utils/authFetch';
-import { getSocket } from '../services/socketService';
+import {
+  onMemberOnline,
+  offMemberOnline,
+  onMemberOffline,
+  offMemberOffline,
+  onMemberJoinedServer,
+  offMemberJoinedServer,
+  onMemberLeftServer,
+  offMemberLeftServer,
+} from '../services/listenerRegistry';
+import eventDeduplication from '../services/eventDeduplication';
 
 export interface MemberProfile {
   userId: string;
@@ -32,16 +42,8 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
   const onlineRef = useRef<Set<string>>(onlineUserIds);
   onlineRef.current = onlineUserIds;
 
-  // Store listener references so we can properly remove them later (avoid duplicates)
-  const listenersRef = useRef<{
-    handleOnline?: (data: { userId: string }) => void;
-    handleOffline?: (data: { userId: string }) => void;
-    handleMemberJoined?: (data: any) => void;
-    handleMemberLeft?: (data: { userId: string }) => void;
-  }>({});
-
-  // Track if listeners are attached to prevent duplicates
-  const listenersAttachedRef = useRef(false);
+  // Track if listeners are registered with the registry
+  const listenersRegisteredRef = useRef(false);
 
   useEffect(() => {
     if (!serverId) {
@@ -83,149 +85,97 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
 
     fetchData();
 
-    // ── Real-time presence via Socket.IO ──────────────────────────────────────
-    const socket = getSocket();
+    // ========== PHASE 2: Use Listener Registry Instead of Direct Socket.on() ==========
+    // Register handlers with the listener registry - it handles reconnection automatically
+    
+    const handleOnline = ({ userId }: { userId: string }) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('member-online', { userId })) {
+        return;
+      }
+      
+      if (!cancelled) {
+        setOnlineUserIds(prev => new Set([...prev, userId]));
+      }
+    };
 
-    if (!socket) {
-      console.warn('[useServerMembers] Socket not initialized yet for serverId:', serverId);
-      return;
-    }
-
-    // Create handler functions if they don't exist yet
-    if (!listenersRef.current.handleOnline) {
-      listenersRef.current.handleOnline = ({ userId }: { userId: string }) => {
-        if (!cancelled) {
-          setOnlineUserIds(prev => new Set([...prev, userId]));
-        }
-      };
-    }
-
-    if (!listenersRef.current.handleOffline) {
-      listenersRef.current.handleOffline = ({ userId }: { userId: string }) => {
-        if (!cancelled) {
-          setOnlineUserIds(prev => {
-            const next = new Set(prev);
-            next.delete(userId);
-            return next;
-          });
-        }
-      };
-    }
-
-    if (!listenersRef.current.handleMemberJoined) {
-      listenersRef.current.handleMemberJoined = (memberData: any) => {
-        if (cancelled) return;
-        // Add the new member to the members list
-        const newMember: MemberProfile = {
-          userId: memberData.userId,
-          username: memberData.username,
-          profilePicture: memberData.profilePicture,
-          serverSpecificName: memberData.serverSpecificName,
-        };
-        setMembers(prev => {
-          // Avoid duplicates
-          if (prev.some(m => m.userId === memberData.userId)) {
-            return prev;
-          }
-          return [...prev, newMember];
-        });
-        // Mark as online since they just joined
-        setOnlineUserIds(prev => new Set([...prev, memberData.userId]));
-      };
-    }
-
-    if (!listenersRef.current.handleMemberLeft) {
-      listenersRef.current.handleMemberLeft = ({ userId }: { userId: string }) => {
-        if (cancelled) return;
-        // Remove the member from the members list
-        setMembers(prev => prev.filter(m => m.userId !== userId));
-        // Remove from online set
+    const handleOffline = ({ userId }: { userId: string }) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('member-offline', { userId })) {
+        return;
+      }
+      
+      if (!cancelled) {
         setOnlineUserIds(prev => {
           const next = new Set(prev);
           next.delete(userId);
           return next;
         });
-      };
-    }
-
-    // Function to attach all listeners
-    const attachListeners = () => {
-      if (listenersAttachedRef.current) {
-        console.warn('[useServerMembers] Listeners already attached, skipping');
-        return; // Already attached
       }
-
-      socket.on('member-online', listenersRef.current.handleOnline!);
-      socket.on('member-offline', listenersRef.current.handleOffline!);
-      socket.on('member-joined-server', listenersRef.current.handleMemberJoined!);
-      socket.on('member-left-server', listenersRef.current.handleMemberLeft!);
-      listenersAttachedRef.current = true;
-
-      console.log('[useServerMembers] Listeners attached for serverId:', serverId);
     };
 
-    // Listen for socket reconnection — when socket reconnects, listeners need to be reattached
-    const onReconnect = () => {
-      console.log('[useServerMembers] Socket reconnected, resetting listeners flag');
-      listenersAttachedRef.current = false;
-      attachListeners();
+    const handleMemberJoined = (memberData: any) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('member-joined-server', memberData)) {
+        return;
+      }
+      
+      if (cancelled) return;
+      // Add the new member to the members list
+      const newMember: MemberProfile = {
+        userId: memberData.userId,
+        username: memberData.username,
+        profilePicture: memberData.profilePicture,
+        serverSpecificName: memberData.serverSpecificName,
+      };
+      setMembers(prev => {
+        // Avoid duplicates
+        if (prev.some(m => m.userId === memberData.userId)) {
+          return prev;
+        }
+        return [...prev, newMember];
+      });
+      // Mark as online since they just joined
+      setOnlineUserIds(prev => new Set([...prev, memberData.userId]));
     };
 
-    socket.on('reconnect', onReconnect);
+    const handleMemberLeft = ({ userId }: { userId: string }) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('member-left-server', { userId })) {
+        return;
+      }
+      
+      if (cancelled) return;
+      // Remove the member from the members list
+      setMembers(prev => prev.filter(m => m.userId !== userId));
+      // Remove from online set
+      setOnlineUserIds(prev => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+    };
 
-    // If socket is already connected, attach listeners immediately
-    if (socket.connected) {
-      attachListeners();
-    } else {
-      // Otherwise wait for connection, then attach
-      console.log('[useServerMembers] Socket not connected yet, waiting for connection...');
-      let connectListener: (() => void) | null = null;
-
-      connectListener = () => {
-        if (!cancelled) {
-          attachListeners();
-          socket.off('connect', connectListener!);
-        }
-      };
-
-      socket.on('connect', connectListener);
-
-      // Clean up the connect listener if component unmounts before connection
-      const cleanupConnectListener = () => {
-        if (connectListener) {
-          socket.off('connect', connectListener);
-        }
-      };
-
-      return () => {
-        cancelled = true;
-        cleanupConnectListener();
-        socket.off('reconnect', onReconnect);
-        // Remove the state listeners if they were attached
-        if (listenersAttachedRef.current && listenersRef.current.handleOnline) {
-          socket.off('member-online', listenersRef.current.handleOnline);
-          socket.off('member-offline', listenersRef.current.handleOffline!);
-          socket.off('member-joined-server', listenersRef.current.handleMemberJoined!);
-          socket.off('member-left-server', listenersRef.current.handleMemberLeft!);
-          listenersAttachedRef.current = false;
-
-          console.log('[useServerMembers] Listeners removed for serverId:', serverId);
-        }
-      };
+    // Register listeners with the registry
+    if (!listenersRegisteredRef.current) {
+      console.log('[useServerMembers] Registering listeners with registry for serverId:', serverId);
+      onMemberOnline(handleOnline);
+      onMemberOffline(handleOffline);
+      onMemberJoinedServer(handleMemberJoined);
+      onMemberLeftServer(handleMemberLeft);
+      listenersRegisteredRef.current = true;
     }
 
+    // Cleanup: Unregister listeners when component unmounts or serverId changes
     return () => {
       cancelled = true;
-      socket.off('reconnect', onReconnect);
-      // Only remove listeners if they were actually attached
-      if (listenersAttachedRef.current && listenersRef.current.handleOnline) {
-        socket.off('member-online', listenersRef.current.handleOnline);
-        socket.off('member-offline', listenersRef.current.handleOffline!);
-        socket.off('member-joined-server', listenersRef.current.handleMemberJoined!);
-        socket.off('member-left-server', listenersRef.current.handleMemberLeft!);
-        listenersAttachedRef.current = false;
-
-        console.log('[useServerMembers] Listeners removed for serverId:', serverId);
+      if (listenersRegisteredRef.current) {
+        console.log('[useServerMembers] Unregistering listeners for serverId:', serverId);
+        offMemberOnline();
+        offMemberOffline();
+        offMemberJoinedServer();
+        offMemberLeftServer();
+        listenersRegisteredRef.current = false;
       }
     };
   }, [serverId]);

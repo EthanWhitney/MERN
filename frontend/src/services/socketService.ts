@@ -1,4 +1,7 @@
 import { io, Socket } from 'socket.io-client';
+import registry from './listenerRegistry';
+import offlineQueue from './offlineQueue';
+import listenerVerification from './listenerVerification';
 
 let socket: Socket | null = null;
 let connectionState = 0; // Counter to trigger useEffect refetch on reconnect
@@ -43,6 +46,14 @@ export const initSocket = (userId: string) => {
       reconnectionAttempts: 5
     });
 
+    // ========== PHASE 2: Integrate Listener Registry ==========
+    // Set socket in registry - this will handle member presence listener reattachment
+    registry.setSocket(socket);
+
+    // ========== PHASE 3.1: Integrate Offline Queue ==========
+    // Set socket in offline queue - this will handle flushing pending events
+    offlineQueue.setSocket(socket);
+
     socket.on('connect', () => {
       console.log('[Socket] Connected with ID:', socket?.id);
       connectionState++; // Increment to trigger useEffect refetch
@@ -52,7 +63,7 @@ export const initSocket = (userId: string) => {
       console.log('[Socket] Disconnected:', reason);
     });
 
-    // Attach global message listener
+    // Attach global message listener (not in registry - manages its own callbacks)
     const attachMessageListener = () => {
       // Remove old listener if one exists
       if (messageListenerHandler && socket) {
@@ -81,6 +92,10 @@ export const initSocket = (userId: string) => {
       console.log('[Socket] Reconnected');
       connectionState++; // Increment to trigger useEffect refetch
       
+      // ========== PHASE 2: Registry Handles Member Listener Reattachment ==========
+      // Registry automatically reattaches member presence listeners
+      // Just reattach the message listener and rejoin channel
+      
       // Reattach message listener after reconnect
       attachMessageListener();
       
@@ -90,6 +105,17 @@ export const initSocket = (userId: string) => {
         console.log('[Socket] Rejoining channel after reconnect:', serverId, channelId);
         socket?.emit('join-server-channel', { serverId, channelId });
       }
+      
+      // ========== PHASE 3.2: Verify Listeners After Reconnect ==========
+      // Check that all critical listeners are properly attached
+      setTimeout(() => {
+        const verificationResult = listenerVerification.verify();
+        if (verificationResult.issues.length > 0) {
+          console.warn('[Socket] Listener verification found issues after reconnect:', verificationResult.issues);
+        } else {
+          console.log('[Socket] Listener verification passed after reconnect');
+        }
+      }, 100); // Small delay to ensure listeners had time to reattach
     });
 
     socket.on('connect_error', (error) => {
@@ -191,11 +217,18 @@ export const getSocket = () => socket;
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
-    socket = null;
-    messageCallbacks.clear();
-    currentServerSubscription = null;
-    messageListenerHandler = null;
   }
+  socket = null;
+  
+  // ========== PHASE 2: Notify Registry of Disconnect ==========
+  registry.setSocket(null);
+  
+  // ========== PHASE 3.1: Notify Offline Queue of Disconnect ==========
+  offlineQueue.setSocket(null);
+  
+  messageCallbacks.clear();
+  currentServerSubscription = null;
+  messageListenerHandler = null;
 };
 
 export const resetSocket = () => {
@@ -203,6 +236,13 @@ export const resetSocket = () => {
     socket.disconnect();
   }
   socket = null;
+  
+  // ========== PHASE 2: Notify Registry of Reset ==========
+  registry.setSocket(null);
+  
+  // ========== PHASE 3.1: Notify Offline Queue of Reset ==========
+  offlineQueue.setSocket(null);
+  
   messageCallbacks.clear();
   currentServerSubscription = null;
   messageListenerHandler = null;
@@ -210,22 +250,18 @@ export const resetSocket = () => {
 
 export const joinDMRoom = (recipientId: string) => {
   console.log('[joinDMRoom] Attempting to join DM with recipient:', recipientId, 'Socket connected:', socket?.connected);
-  if (socket?.connected) {
-    socket.emit('join-dm', recipientId);
-    console.log('[joinDMRoom] Emitted join-dm event');
-  } else {
-    console.warn('[joinDMRoom] Socket not connected, cannot join DM');
-  }
+  
+  // Use offline queue to handle disconnections gracefully
+  offlineQueue.queueEvent('join-dm', recipientId);
 };
 
 export const sendDMMessage = (recipientId: string, message: any) => {
   console.log('[sendDMMessage] Sending to recipient:', recipientId, 'Socket connected:', socket?.connected);
-  if (socket?.connected) {
-    socket.emit('send-dm', { recipientId, message });
-    console.log('[sendDMMessage] Emitted send-dm event');
-  } else {
-    console.warn('[sendDMMessage] Socket not connected, cannot send DM');
-  }
+  
+  // ========== PHASE 3.1: Use Offline Queue for Messages ==========
+  // Queue the message - it will be sent immediately if socket connected, 
+  // or persisted to localStorage if disconnected
+  offlineQueue.queueEvent('send-dm', { recipientId, message });
 };
 
 export const joinServerChannel = (serverId: string, channelId: string) => {
@@ -233,14 +269,8 @@ export const joinServerChannel = (serverId: string, channelId: string) => {
   // Track this as the current subscription so we can rejoin on reconnect
   currentServerSubscription = { serverId, channelId };
   
-  if (!socket) {
-    console.warn('[joinServerChannel] Socket is null');
-    return;
-  }
-  
-  // Emit the join - Socket.IO will buffer it if not connected yet
-  socket.emit('join-server-channel', { serverId, channelId });
-  console.log('[joinServerChannel] Emitted join-server-channel event');
+  // Use offline queue to handle disconnections
+  offlineQueue.queueEvent('join-server-channel', { serverId, channelId });
 };
 
 export const leaveServerChannel = (serverId: string, channelId: string) => {
@@ -250,9 +280,8 @@ export const leaveServerChannel = (serverId: string, channelId: string) => {
     currentServerSubscription = null;
   }
   
-  if (socket?.connected) {
-    socket.emit('leave-server-channel', { serverId, channelId });
-  }
+  // Use offline queue
+  offlineQueue.queueEvent('leave-server-channel', { serverId, channelId });
 };
 
 export const onReceiveMessage = (callback: (message: any) => void) => {
