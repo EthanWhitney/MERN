@@ -77,6 +77,9 @@ function Login()
         id="loginName"
         placeholder="Email or Username"
         onChange={handleSetLoginName}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') doLogin(e);
+        }}
       /><br />
 
       <input
@@ -84,6 +87,9 @@ function Login()
         id="loginPassword"
         placeholder="Password"
         onChange={handleSetPassword}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') doLogin(e);
+        }}
       /><br />
 
       <input

@@ -45,6 +45,7 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
   const chatMessagesRef = useRef<HTMLElement>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const shouldPreserveScrollRef = useRef<boolean>(false);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   // Derive current user's basic profile from localStorage for sender-id fallback only
   const currentUserData = useMemo(() => {
@@ -137,6 +138,7 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
     const success = await sendMessage(messageInput);
     if (success) {
       setMessageInput('');
+      messageInputRef.current?.focus();
     }
   };
 
@@ -290,6 +292,7 @@ const FriendsChat = ({ selectedFriend, currentUserId, activeTab, onTabChange, on
 
           <footer className="chat-input-area">
             <input
+              ref={messageInputRef}
               type="text"
               className="chat-input"
               placeholder="Type a message..."
