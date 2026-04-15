@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ServerPage.css';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
+import { authFetch } from '../utils/authFetch';
 import { getServer, deleteServer, leaveServer, deleteTextChannel, type Server, type Channel } from '../services/serverApi';
 import ServerList from '../components/ServerList';
 import CreateChannelModal from '../components/CreateChannelModal';
@@ -12,7 +13,25 @@ import MessageList from '../components/MessageList';
 import UserControls from '../components/UserControls';
 import { useChatThread } from '../hooks/useChatThread';
 import { useServerMembers } from '../hooks/useServerMembers';
-import { initSocket, joinServerChannel, leaveServerChannel } from '../services/socketService';
+import {
+  initSocket,
+  joinServerChannel,
+  leaveServerChannel,
+  onVoiceChannelCreated,
+  offVoiceChannelCreated,
+  onVoiceChannelDeleted,
+  offVoiceChannelDeleted,
+  onTextChannelCreated,
+  offTextChannelCreated,
+  onTextChannelDeleted,
+  offTextChannelDeleted,
+  onUserJoinedVoiceChannel,
+  offUserJoinedVoiceChannel,
+  onUserSwappedVoiceChannel,
+  offUserSwappedVoiceChannel,
+  onUserLeftVoiceChannel,
+  offUserLeftVoiceChannel,
+} from '../services/socketService';
 import { VoiceChannel } from '../components/VoiceChannel';
 
 const ServerPage = () => {
@@ -43,16 +62,37 @@ const ServerPage = () => {
     if (!newVoiceChannelName.trim() || !serverId) return;
     try {
       setIsCreatingVoice(true);
-      await fetch(`/api/servers/${serverId}/voiceChannels`, {
+      const response = await authFetch(`/api/servers/${serverId}/voiceChannels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channelName: newVoiceChannelName.trim() }),
       });
+      
+      const contentType = response.headers.get('content-type');
+      console.log('Response status:', response.status);
+      console.log('Response content-type:', contentType);
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response received:');
+        console.error('Response:', text);
+        console.error('First 500 chars:', text.substring(0, 500));
+        throw new Error('Server returned invalid response. Check console for details.');
+      }
+      
+      const data = await response.json();
+      console.log('Response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create voice channel');
+      }
+      
       setNewVoiceChannelName('');
       setShowCreateVoiceModal(false);
       await loadServer(serverId);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create voice channel:', err);
+      alert(`Error creating voice channel: ${err.message || err}`);
     } finally {
       setIsCreatingVoice(false);
     }
@@ -93,6 +133,31 @@ const ServerPage = () => {
       loadServer(serverId);
     }
   }, [serverId]);
+
+  // Poll for voice channel updates when in an active voice channel
+  useEffect(() => {
+    if (!activeVoiceChannel || !serverId) return;
+
+    const pollVoiceChannels = async () => {
+      try {
+        const response = await fetch(`/api/servers/${serverId}/voiceChannels`);
+        if (response.ok) {
+          const { channels } = await response.json();
+          setServer(prev => {
+            if (!prev) return null;
+            return { ...prev, voiceChannels: channels };
+          });
+        }
+      } catch (err) {
+        console.error('Failed to poll voice channels:', err);
+      }
+    };
+
+    // Poll immediately and then every 2 seconds while in voice channel
+    pollVoiceChannels();
+    const interval = setInterval(pollVoiceChannels, 2000);
+    return () => clearInterval(interval);
+  }, [activeVoiceChannel, serverId, members]);
 
   const handleDMClick = useCallback((userId: string) => {
     navigate(`/friends/${userId}`);
@@ -163,11 +228,157 @@ const ServerPage = () => {
     }
   }, [channelId, serverId, currentUserId]);
 
+  // Listen for channel creation/deletion socket events
+  useEffect(() => {
+    if (!serverId) return;
+
+    const handleVoiceChannelCreated = (data: any) => {
+      console.log('[ServerPage] Voice channel created:', data.channel);
+      setServer(prev => {
+        if (!prev) return null;
+        // Add new voice channel to the list
+        const voiceChannels = [...(prev.voiceChannels || []), data.channel];
+        return { ...prev, voiceChannels };
+      });
+    };
+
+    const handleVoiceChannelDeleted = (data: any) => {
+      console.log('[ServerPage] Voice channel deleted:', data.channelId);
+      setServer(prev => {
+        if (!prev) return null;
+        // Remove deleted voice channel from the list
+        const voiceChannels = (prev.voiceChannels || []).filter(
+          (ch: any) => ch._id !== data.channelId
+        );
+        return { ...prev, voiceChannels };
+      });
+    };
+
+    const handleTextChannelCreated = (data: any) => {
+      console.log('[ServerPage] Text channel created:', data.channel);
+      setServer(prev => {
+        if (!prev) return null;
+        // Add new text channel to the list
+        const textChannels = [...(prev.textChannels || []), data.channel];
+        return { ...prev, textChannels };
+      });
+    };
+
+    const handleTextChannelDeleted = (data: any) => {
+      console.log('[ServerPage] Text channel deleted:', data.channelId);
+      setServer(prev => {
+        if (!prev) return null;
+        // Remove deleted text channel from the list
+        const textChannels = (prev.textChannels || []).filter(
+          (ch: any) => ch._id !== data.channelId
+        );
+        return { ...prev, textChannels };
+      });
+    };
+
+    onVoiceChannelCreated(handleVoiceChannelCreated);
+    onVoiceChannelDeleted(handleVoiceChannelDeleted);
+    onTextChannelCreated(handleTextChannelCreated);
+    onTextChannelDeleted(handleTextChannelDeleted);
+
+    return () => {
+      offVoiceChannelCreated(handleVoiceChannelCreated);
+      offVoiceChannelDeleted(handleVoiceChannelDeleted);
+      offTextChannelCreated(handleTextChannelCreated);
+      offTextChannelDeleted(handleTextChannelDeleted);
+    };
+  }, [serverId]);
+
+  // Listen for voice channel user state changes (join/swap/leave)
+  useEffect(() => {
+    if (!serverId) return;
+
+    const handleUserJoinedVoiceChannel = (data: any) => {
+      console.log('[ServerPage] User joined voice channel:', data);
+      setServer(prev => {
+        if (!prev) return null;
+        // Add user to the voice channel's activeMembers
+        const voiceChannels = prev.voiceChannels?.map((ch: any) => {
+          if (ch._id === data.channelId) {
+            // Avoid duplicates
+            const activeMembers = ch.activeMembers || [];
+            if (!activeMembers.some((m: any) => {
+              const mId = typeof m === 'object' ? (m as any).toString() : String(m);
+              return mId === data.userId;
+            })) {
+              return { ...ch, activeMembers: [...activeMembers, data.userId] };
+            }
+          }
+          return ch;
+        }) || [];
+        return { ...prev, voiceChannels };
+      });
+    };
+
+    const handleUserSwappedVoiceChannel = (data: any) => {
+      console.log('[ServerPage] User swapped voice channel:', data);
+      setServer(prev => {
+        if (!prev) return null;
+        // Remove user from old channel and add to new channel
+        const voiceChannels = prev.voiceChannels?.map((ch: any) => {
+          if (data.fromChannelId && ch._id === data.fromChannelId) {
+            // Remove from old channel
+            const activeMembers = (ch.activeMembers || []).filter((m: any) => {
+              const mId = typeof m === 'object' ? (m as any).toString() : String(m);
+              return mId !== data.userId;
+            });
+            return { ...ch, activeMembers };
+          }
+          if (ch._id === data.toChannelId) {
+            // Add to new channel
+            const activeMembers = ch.activeMembers || [];
+            if (!activeMembers.some((m: any) => {
+              const mId = typeof m === 'object' ? (m as any).toString() : String(m);
+              return mId === data.userId;
+            })) {
+              return { ...ch, activeMembers: [...activeMembers, data.userId] };
+            }
+          }
+          return ch;
+        }) || [];
+        return { ...prev, voiceChannels };
+      });
+    };
+
+    const handleUserLeftVoiceChannel = (data: any) => {
+      console.log('[ServerPage] User left voice channel:', data);
+      setServer(prev => {
+        if (!prev) return null;
+        // Remove user from the voice channel's activeMembers
+        const voiceChannels = prev.voiceChannels?.map((ch: any) => {
+          if (ch._id === data.channelId) {
+            const activeMembers = (ch.activeMembers || []).filter((m: any) => {
+              const mId = typeof m === 'object' ? (m as any).toString() : String(m);
+              return mId !== data.userId;
+            });
+            return { ...ch, activeMembers };
+          }
+          return ch;
+        }) || [];
+        return { ...prev, voiceChannels };
+      });
+    };
+
+    onUserJoinedVoiceChannel(handleUserJoinedVoiceChannel);
+    onUserSwappedVoiceChannel(handleUserSwappedVoiceChannel);
+    onUserLeftVoiceChannel(handleUserLeftVoiceChannel);
+
+    return () => {
+      offUserJoinedVoiceChannel(handleUserJoinedVoiceChannel);
+      offUserSwappedVoiceChannel(handleUserSwappedVoiceChannel);
+      offUserLeftVoiceChannel(handleUserLeftVoiceChannel);
+    };
+  }, [serverId]);
+
   const loadServer = async (id: string) => {
     try {
       setLoading(true);
       const serverData = await getServer(id);
-      console.log('voiceChannels from API:', serverData.voiceChannels); 
       setServer(serverData);
     } catch (err: any) {
       setError(err.message || 'Failed to load server');
@@ -422,21 +633,74 @@ const ServerPage = () => {
           </div>
           <div className="channel-list">
             {server.voiceChannels && server.voiceChannels.length > 0 ? (
-              server.voiceChannels.map((channel: any) => (
-                <div
-                  key={channel._id}
-                  className={`channel-item voice-channel ${activeVoiceChannel?.id === channel._id ? 'active' : ''}`}
-                  onClick={() => {
-                    console.log('Voice channel clicked:', channel._id, channel.name);
-                    setActiveVoiceChannel({ id: channel._id, name: channel.name });
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 3C10.34 3 9 4.37 9 6.07V11.93C9 13.63 10.34 15 12 15C13.66 15 15 13.63 15 11.93V6.07C15 4.37 13.66 3 12 3ZM18.5 11C18.5 11 18.5 11.93 18.5 11.93C18.5 15.23 15.86 17.93 12.5 18V21H11V18C7.64 17.93 5 15.23 5 11.93V11H6.5V11.93C6.5 14.41 8.52 16.43 11 16.43H13C15.48 16.43 17.5 14.41 17.5 11.93V11H18.5Z" />
-                  </svg>
-                  <span>{channel.channelName || channel.name}</span>
-                </div>
-              ))
+              server.voiceChannels.map((channel: any) => {
+                const activeMembers = channel.activeMembers || [];
+                // Convert ObjectIds to strings and match with member profiles
+                const memberProfiles = activeMembers
+                  .map((memberId: any) => {
+                    const idStr = typeof memberId === 'object' ? memberId.toString() : String(memberId);
+                    return members.find((m: any) => {
+                      const mIdStr = typeof m.userId === 'object' ? (m.userId as any).toString() : String(m.userId);
+                      return mIdStr === idStr;
+                    });
+                  })
+                  .filter(Boolean);
+
+                return (
+                  <div
+                    key={channel._id}
+                    className={`channel-item voice-channel ${activeVoiceChannel?.id === channel._id ? 'active' : ''}`}
+                    onClick={() => {
+                      console.log('Voice channel clicked:', channel._id, channel.name);
+                      setActiveVoiceChannel({ id: channel._id, name: channel.name });
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, marginTop: '2px' }}>
+                        <path d="M12 3C10.34 3 9 4.37 9 6.07V11.93C9 13.63 10.34 15 12 15C13.66 15 15 13.63 15 11.93V6.07C15 4.37 13.66 3 12 3ZM18.5 11C18.5 11 18.5 11.93 18.5 11.93C18.5 15.23 15.86 17.93 12.5 18V21H11V18C7.64 17.93 5 15.23 5 11.93V11H6.5V11.93C6.5 14.41 8.52 16.43 11 16.43H13C15.48 16.43 17.5 14.41 17.5 11.93V11H18.5Z" />
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block' }}>{channel.channelName || channel.name}</span>
+                        {memberProfiles.length > 0 && (
+                          <div style={{ fontSize: '12px', color: '#949ba4', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {memberProfiles.map((profile: any) => (
+                              <div key={profile?.userId} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{
+                                  width: '20px',
+                                  height: '20px',
+                                  borderRadius: '50%',
+                                  background: '#5865f2',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '10px',
+                                  fontWeight: 'bold',
+                                  color: 'white',
+                                  flexShrink: 0,
+                                  overflow: 'hidden',
+                                }}>
+                                  {profile?.profilePicture ? (
+                                    <img 
+                                      src={normalizeProfilePicturePath(profile.profilePicture)} 
+                                      alt={profile?.username}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  ) : (
+                                    <span>{(profile?.username || profile?.serverSpecificName || '?')[0]?.toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {profile?.serverSpecificName || profile?.username || 'Unknown'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             ) : (
               <div className="channel-item voice-channel channel-empty">
                 <span>No voice channels</span>
@@ -448,6 +712,7 @@ const ServerPage = () => {
 
       {activeVoiceChannel && (
         <VoiceChannel
+          serverId={serverId!}
           channelId={activeVoiceChannel.id}
           channelName={activeVoiceChannel.name}
           currentUserId={currentUserId}

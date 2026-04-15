@@ -12,6 +12,11 @@ const url = process.env.MONGODB_URI;
 const client = new MongoClient(url);
 client.connect().catch(err => {});
 
+// Async error wrapper for route handlers
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -504,6 +509,16 @@ setTimeout(() => {
 socketManager.setSocketIO(io, userSocketsMultiple, voiceRooms);
 
 module.exports = { httpServer, io, userSockets, userSocketsMultiple };
+
+// Global error handler - catch all errors and return JSON
+app.use((err, req, res, next) => {
+  console.error('[GLOBAL ERROR]', err);
+  res.status(500).json({ 
+    channel: null,
+    error: err.message || 'Internal server error',
+    message: err.message || 'Internal server error'
+  });
+});
 
 // Required for mobile emulation
 

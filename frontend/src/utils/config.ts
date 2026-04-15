@@ -8,5 +8,10 @@ export const getApiBaseUrl = (): string => {
 };
 
 export const buildPath = (route: string): string => {
-  return `${getApiBaseUrl()}/${route}`;
+  const baseUrl = getApiBaseUrl();
+  // If route already starts with /, don't add another slash
+  if (route.startsWith('/')) {
+    return `${baseUrl}${route}`;
+  }
+  return `${baseUrl}/${route}`;
 };

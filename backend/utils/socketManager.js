@@ -469,6 +469,181 @@ const broadcastUserOffline = async (db, userId) => {
   }
 };
 
+/**
+ * Broadcast voice channel creation to all server members
+ */
+const broadcastVoiceChannelCreated = async (db, serverId, voiceChannelData) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastVoiceChannelCreated: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      channel: voiceChannelData,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'voice-channel-created', eventData);
+    console.log(`[socketManager] voice-channel-created broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastVoiceChannelCreated:', err);
+  }
+};
+
+/**
+ * Broadcast voice channel deletion to all server members
+ */
+const broadcastVoiceChannelDeleted = async (db, serverId, channelId) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastVoiceChannelDeleted: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      channelId: channelId.toString(),
+      serverId: serverId.toString(),
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'voice-channel-deleted', eventData);
+    console.log(`[socketManager] voice-channel-deleted broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastVoiceChannelDeleted:', err);
+  }
+};
+
+/**
+ * Broadcast text channel creation to all server members
+ */
+const broadcastTextChannelCreated = async (db, serverId, textChannelData) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastTextChannelCreated: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      channel: textChannelData,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'text-channel-created', eventData);
+    console.log(`[socketManager] text-channel-created broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastTextChannelCreated:', err);
+  }
+};
+
+/**
+ * Broadcast text channel deletion to all server members
+ */
+const broadcastTextChannelDeleted = async (db, serverId, channelId) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastTextChannelDeleted: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      channelId: channelId.toString(),
+      serverId: serverId.toString(),
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'text-channel-deleted', eventData);
+    console.log(`[socketManager] text-channel-deleted broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastTextChannelDeleted:', err);
+  }
+};
+
+/**
+ * Broadcast user joined voice channel
+ */
+const broadcastUserJoinedVoiceChannel = async (db, serverId, channelId, userId, userData) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastUserJoinedVoiceChannel: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      channelId: channelId.toString(),
+      serverId: serverId.toString(),
+      username: userData?.username || 'Unknown',
+      profilePicture: userData?.profilePicture,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'user-joined-voice-channel', eventData);
+    console.log(`[socketManager] user-joined-voice-channel broadcast: user ${userId} joined ${channelId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserJoinedVoiceChannel:', err);
+  }
+};
+
+/**
+ * Broadcast user swapped voice channels
+ */
+const broadcastUserSwappedVoiceChannel = async (db, serverId, fromChannelId, toChannelId, userId, userData) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastUserSwappedVoiceChannel: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      fromChannelId: fromChannelId?.toString() || null,
+      toChannelId: toChannelId.toString(),
+      serverId: serverId.toString(),
+      username: userData?.username || 'Unknown',
+      profilePicture: userData?.profilePicture,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'user-swapped-voice-channel', eventData);
+    console.log(`[socketManager] user-swapped-voice-channel broadcast: user ${userId} moved from ${fromChannelId} to ${toChannelId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserSwappedVoiceChannel:', err);
+  }
+};
+
+/**
+ * Broadcast user left voice channel
+ */
+const broadcastUserLeftVoiceChannel = async (db, serverId, channelId, userId, userData) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastUserLeftVoiceChannel: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      channelId: channelId.toString(),
+      serverId: serverId.toString(),
+      username: userData?.username || 'Unknown',
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'user-left-voice-channel', eventData);
+    console.log(`[socketManager] user-left-voice-channel broadcast: user ${userId} left ${channelId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserLeftVoiceChannel:', err);
+  }
+};
+
 module.exports = {
   setSocketIO,
   getIO,
@@ -497,4 +672,11 @@ module.exports = {
   broadcastUserAccountDeleted,
   broadcastUserOnline,
   broadcastUserOffline,
+  broadcastVoiceChannelCreated,
+  broadcastVoiceChannelDeleted,
+  broadcastTextChannelCreated,
+  broadcastTextChannelDeleted,
+  broadcastUserJoinedVoiceChannel,
+  broadcastUserSwappedVoiceChannel,
+  broadcastUserLeftVoiceChannel,
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useVoice } from '../hooks/useVoice';
+import { authFetch } from '../utils/authFetch';
 
 const AudioPlayer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -10,6 +11,7 @@ const AudioPlayer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
 };
 
 interface VoiceChannelProps {
+  serverId: string;
   channelId: string;
   channelName: string;
   currentUserId: string;
@@ -18,6 +20,7 @@ interface VoiceChannelProps {
 }
 
 export const VoiceChannel: React.FC<VoiceChannelProps> = ({
+  serverId,
   channelId,
   channelName,
   currentUserId,
@@ -27,6 +30,39 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
   const { remoteStreams, remoteUsers } = useVoice(channelId, currentUserId);
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
   const myUsername = userData.username || 'Me';
+
+  // Notify backend when joining/leaving voice channel
+  useEffect(() => {
+    const joinVoiceChannel = async () => {
+      try {
+        await authFetch(`/api/servers/${serverId}/voiceChannels/${channelId}/join`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUserId }),
+        });
+      } catch (error) {
+        console.error('Failed to join voice channel:', error);
+      }
+    };
+
+    const leaveVoiceChannel = async () => {
+      try {
+        await authFetch(`/api/servers/${serverId}/voiceChannels/${channelId}/leave`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUserId }),
+        });
+      } catch (error) {
+        console.error('Failed to leave voice channel:', error);
+      }
+    };
+
+    joinVoiceChannel();
+
+    return () => {
+      leaveVoiceChannel();
+    };
+  }, [serverId, channelId, currentUserId]);
 
   return (
     <div style={{

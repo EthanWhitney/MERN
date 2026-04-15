@@ -449,6 +449,80 @@ export const offMemberVoiceStateChanged = (callback: (data: any) => void) => {
   socket.off('member-voice-state-changed', callback);
 };
 
+// ========== CHANNEL CREATION/DELETION EVENTS ==========
+
+export const onVoiceChannelCreated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('voice-channel-created', callback);
+};
+
+export const offVoiceChannelCreated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('voice-channel-created', callback);
+};
+
+export const onVoiceChannelDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('voice-channel-deleted', callback);
+};
+
+export const offVoiceChannelDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('voice-channel-deleted', callback);
+};
+
+export const onTextChannelCreated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('text-channel-created', callback);
+};
+
+export const offTextChannelCreated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('text-channel-created', callback);
+};
+
+export const onTextChannelDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('text-channel-deleted', callback);
+};
+
+export const offTextChannelDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('text-channel-deleted', callback);
+};
+
+// ========== VOICE CHANNEL USER STATE EVENTS ==========
+
+export const onUserJoinedVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('user-joined-voice-channel', callback);
+};
+
+export const offUserJoinedVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('user-joined-voice-channel', callback);
+};
+
+export const onUserSwappedVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('user-swapped-voice-channel', callback);
+};
+
+export const offUserSwappedVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('user-swapped-voice-channel', callback);
+};
+
+export const onUserLeftVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('user-left-voice-channel', callback);
+};
+
+export const offUserLeftVoiceChannel = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('user-left-voice-channel', callback);
+};
+
 export const onUserAccountDeleted = (callback: (data: any) => void) => {
   if (!socket) return;
   socket.on('user-account-deleted', callback);

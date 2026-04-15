@@ -1,4 +1,11 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const {
+  broadcastVoiceChannelCreated,
+  broadcastVoiceChannelDeleted,
+  broadcastUserJoinedVoiceChannel,
+  broadcastUserSwappedVoiceChannel,
+  broadcastUserLeftVoiceChannel,
+} = require('../utils/socketManager');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -9,6 +16,11 @@ if (!client.topology || !client.topology.isConnected()) {
 
 // POST /api/servers/:serverId/voiceChannels
 const createVoiceChannel = async (req, res) => {
+  console.log('[createVoiceChannel] Request received');
+  console.log('[createVoiceChannel] Params:', req.params);
+  console.log('[createVoiceChannel] Body:', req.body);
+  console.log('[createVoiceChannel] User:', req.user);
+  
   const { serverId } = req.params;
   const { channelName, voiceRoles } = req.body;
   let error = '';
@@ -18,7 +30,7 @@ const createVoiceChannel = async (req, res) => {
       error = 'Invalid server ID';
       return res.status(400).json({ channel: null, error });
     }
-    if (!channelName) {
+    if (!channelName || !channelName.trim()) {
       error = 'channelName is required';
       return res.status(400).json({ channel: null, error });
     }
@@ -34,7 +46,7 @@ const createVoiceChannel = async (req, res) => {
 
     const newChannel = {
       serverId: serverObjId,
-      channelName,
+      channelName: channelName.trim(),
       voiceRoles: voiceRoles || [],
       activeMembers: [],
       createdAt: new Date(),
@@ -47,12 +59,20 @@ const createVoiceChannel = async (req, res) => {
       { $push: { voiceChannels: result.insertedId } }
     );
 
+    const createdChannel = { ...newChannel, _id: result.insertedId };
+    
+    // Broadcast voice channel creation to all server members
+    await broadcastVoiceChannelCreated(db, serverObjId, createdChannel);
+
+    console.log('[createVoiceChannel] Channel created successfully:', result.insertedId);
     return res.status(201).json({
-      channel: { ...newChannel, _id: result.insertedId },
+      channel: createdChannel,
       error: '',
     });
   } catch (e) {
-    error = e.toString();
+    console.error('[createVoiceChannel Error]', e);
+    console.error('[createVoiceChannel Error] Stack:', e.stack);
+    error = e.message || e.toString();
     return res.status(500).json({ channel: null, error });
   }
 };
@@ -151,6 +171,9 @@ const deleteVoiceChannel = async (req, res) => {
       ),
     ]);
 
+    // Broadcast voice channel deletion to all server members
+    await broadcastVoiceChannelDeleted(db, serverObjId, channelObjId);
+
     return res.status(200).json({ message: 'Voice channel deleted successfully', error: '' });
   } catch (e) {
     error = e.toString();
@@ -188,17 +211,61 @@ const joinVoiceChannel = async (req, res) => {
       return res.status(404).json({ channel: null, error });
     }
 
-    // Remove user from any other voice channel in this server first
-    await db.collection('voiceChannels').updateMany(
-      { serverId: serverObjId },
-      { $pull: { activeMembers: userObjId } }
+    // Get user data for broadcast
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { username: 1, profilePicture: 1 } }
     );
+
+    // Check if user is in another voice channel in this server
+    const currentChannelWithUser = await db.collection('voiceChannels').findOne({
+      serverId: serverObjId,
+      activeMembers: userObjId,
+      _id: { $ne: channelObjId }
+    });
+
+    let isSwapping = false;
+    if (currentChannelWithUser) {
+      isSwapping = true;
+      // Remove user from any other voice channel in this server
+      await db.collection('voiceChannels').updateMany(
+        { serverId: serverObjId },
+        { $pull: { activeMembers: userObjId } }
+      );
+      
+      // Broadcast swap event
+      await broadcastUserSwappedVoiceChannel(
+        db,
+        serverObjId,
+        currentChannelWithUser._id,
+        channelObjId,
+        userObjId,
+        user
+      );
+    } else {
+      // User is not in any channel, just remove from all to be safe
+      await db.collection('voiceChannels').updateMany(
+        { serverId: serverObjId },
+        { $pull: { activeMembers: userObjId } }
+      );
+    }
 
     // Add user to this channel
     await db.collection('voiceChannels').updateOne(
       { _id: channelObjId },
       { $addToSet: { activeMembers: userObjId } }
     );
+
+    // Broadcast join event only if not swapping (swap event already covers the transition)
+    if (!isSwapping) {
+      await broadcastUserJoinedVoiceChannel(
+        db,
+        serverObjId,
+        channelObjId,
+        userObjId,
+        user
+      );
+    }
 
     const updated = await db.collection('voiceChannels').findOne({ _id: channelObjId });
 
@@ -239,9 +306,24 @@ const leaveVoiceChannel = async (req, res) => {
       return res.status(404).json({ channel: null, error });
     }
 
+    // Get user data for broadcast
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { username: 1, profilePicture: 1 } }
+    );
+
     await db.collection('voiceChannels').updateOne(
       { _id: channelObjId },
       { $pull: { activeMembers: userObjId } }
+    );
+
+    // Broadcast leave event
+    await broadcastUserLeftVoiceChannel(
+      db,
+      serverObjId,
+      channelObjId,
+      userObjId,
+      user
     );
 
     const updated = await db.collection('voiceChannels').findOne({ _id: channelObjId });

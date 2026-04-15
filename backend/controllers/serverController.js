@@ -138,9 +138,11 @@ const getServer = async (req, res) => {
         _id: channel._id,
         channelID: channel._id,
         name: channel.channelName,
+        channelName: channel.channelName,
         topic: channel.topic,
         createdAt: channel.createdAt,
-        serverId: channel.serverId
+        serverId: channel.serverId,
+        activeMembers: channel.activeMembers || [],
       }));
     }
 
