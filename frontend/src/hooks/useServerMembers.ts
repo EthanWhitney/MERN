@@ -10,6 +10,10 @@ import {
   offMemberJoinedServer,
   onMemberLeftServer,
   offMemberLeftServer,
+  onServerProfileUpdated,
+  offServerProfileUpdated,
+  onMemberVoiceStateChanged,
+  offMemberVoiceStateChanged,
 } from '../services/listenerRegistry';
 import eventDeduplication from '../services/eventDeduplication';
 
@@ -18,6 +22,10 @@ export interface MemberProfile {
   username: string;
   profilePicture?: string;
   serverSpecificName?: string;
+  voiceState?: {
+    muted?: boolean;
+    deafened?: boolean;
+  };
 }
 
 interface UseServerMembersResult {
@@ -156,6 +164,51 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
       });
     };
 
+    const handleServerProfileUpdated = (data: any) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('server-profile-updated', data)) {
+        return;
+      }
+
+      if (cancelled) return;
+      const { userId: changedUserId, updates } = data;
+      
+      // Update the member's server profile fields (serverSpecificName, profilePicture, etc.)
+      setMembers(prev =>
+        prev.map(member =>
+          member.userId === changedUserId
+            ? {
+                ...member,
+                ...(updates.serverSpecificName !== undefined && { serverSpecificName: updates.serverSpecificName }),
+                ...(updates.profilePicture !== undefined && { profilePicture: updates.profilePicture }),
+              }
+            : member
+        )
+      );
+    };
+
+    const handleMemberVoiceStateChanged = (data: any) => {
+      // ========== PHASE 4.1: Event Deduplication ==========
+      if (eventDeduplication.isDuplicate('member-voice-state-changed', data)) {
+        return;
+      }
+
+      if (cancelled) return;
+      const { userId: changedUserId, voiceState } = data;
+      
+      // Update the member's voice state
+      setMembers(prev =>
+        prev.map(member =>
+          member.userId === changedUserId
+            ? {
+                ...member,
+                voiceState,
+              }
+            : member
+        )
+      );
+    };
+
     // Register listeners with the registry
     if (!listenersRegisteredRef.current) {
       console.log('[useServerMembers] Registering listeners with registry for serverId:', serverId);
@@ -163,6 +216,8 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
       onMemberOffline(handleOffline);
       onMemberJoinedServer(handleMemberJoined);
       onMemberLeftServer(handleMemberLeft);
+      onServerProfileUpdated(handleServerProfileUpdated);
+      onMemberVoiceStateChanged(handleMemberVoiceStateChanged);
       listenersRegisteredRef.current = true;
     }
 
@@ -175,9 +230,33 @@ export const useServerMembers = (serverId?: string): UseServerMembersResult => {
         offMemberOffline();
         offMemberJoinedServer();
         offMemberLeftServer();
+        offServerProfileUpdated();
+        offMemberVoiceStateChanged();
         listenersRegisteredRef.current = false;
       }
     };
+  }, [serverId]);
+
+  // ========== PHASE 3.4: Refresh members online status on socket connection ==========
+  // When socket connects, refresh the online member list to get updated status
+  useEffect(() => {
+    if (!serverId) return;
+
+    // Refresh online status after socket connects
+    const timer = setTimeout(async () => {
+      console.log('[useServerMembers] Refreshing members online status after socket ready');
+      try {
+        const onlineRes = await authFetch(`api/servers/${serverId}/members/online`);
+        if (onlineRes.ok) {
+          const data = await onlineRes.json();
+          setOnlineUserIds(new Set<string>(data.onlineUserIds || []));
+        }
+      } catch (err) {
+        console.error('[useServerMembers] Error refreshing online members:', err);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [serverId]);
 
   return { members, onlineUserIds, loading, error };

@@ -295,6 +295,85 @@ export const offMemberLeftServer = (): void => {
   }
 };
 
+// ========== PROFILE & ACCOUNT CHANGE EVENTS (PHASE 5.1) ==========
+
+let onProfilePictureChangedHandler: ((data: any) => void) | null = null;
+let onServerProfileUpdatedHandler: ((data: any) => void) | null = null;
+let onMemberVoiceStateChangedHandler: ((data: any) => void) | null = null;
+let onUserAccountDeletedHandler: ((data: any) => void) | null = null;
+
+export const onProfilePictureChanged = (handler: (data: any) => void): void => {
+  if (onProfilePictureChangedHandler) {
+    registry.off('profile-picture-changed', onProfilePictureChangedHandler);
+  }
+  
+  onProfilePictureChangedHandler = handler;
+  registry.on('profile-picture-changed', handler);
+  console.log('[ListenerRegistry] Registered onProfilePictureChanged handler');
+};
+
+export const offProfilePictureChanged = (): void => {
+  if (onProfilePictureChangedHandler) {
+    registry.off('profile-picture-changed', onProfilePictureChangedHandler);
+    onProfilePictureChangedHandler = null;
+    console.log('[ListenerRegistry] Unregistered onProfilePictureChanged handler');
+  }
+};
+
+export const onServerProfileUpdated = (handler: (data: any) => void): void => {
+  if (onServerProfileUpdatedHandler) {
+    registry.off('server-profile-updated', onServerProfileUpdatedHandler);
+  }
+  
+  onServerProfileUpdatedHandler = handler;
+  registry.on('server-profile-updated', handler);
+  console.log('[ListenerRegistry] Registered onServerProfileUpdated handler');
+};
+
+export const offServerProfileUpdated = (): void => {
+  if (onServerProfileUpdatedHandler) {
+    registry.off('server-profile-updated', onServerProfileUpdatedHandler);
+    onServerProfileUpdatedHandler = null;
+    console.log('[ListenerRegistry] Unregistered onServerProfileUpdated handler');
+  }
+};
+
+export const onMemberVoiceStateChanged = (handler: (data: any) => void): void => {
+  if (onMemberVoiceStateChangedHandler) {
+    registry.off('member-voice-state-changed', onMemberVoiceStateChangedHandler);
+  }
+  
+  onMemberVoiceStateChangedHandler = handler;
+  registry.on('member-voice-state-changed', handler);
+  console.log('[ListenerRegistry] Registered onMemberVoiceStateChanged handler');
+};
+
+export const offMemberVoiceStateChanged = (): void => {
+  if (onMemberVoiceStateChangedHandler) {
+    registry.off('member-voice-state-changed', onMemberVoiceStateChangedHandler);
+    onMemberVoiceStateChangedHandler = null;
+    console.log('[ListenerRegistry] Unregistered onMemberVoiceStateChanged handler');
+  }
+};
+
+export const onUserAccountDeleted = (handler: (data: any) => void): void => {
+  if (onUserAccountDeletedHandler) {
+    registry.off('user-account-deleted', onUserAccountDeletedHandler);
+  }
+  
+  onUserAccountDeletedHandler = handler;
+  registry.on('user-account-deleted', handler);
+  console.log('[ListenerRegistry] Registered onUserAccountDeleted handler');
+};
+
+export const offUserAccountDeleted = (): void => {
+  if (onUserAccountDeletedHandler) {
+    registry.off('user-account-deleted', onUserAccountDeletedHandler);
+    onUserAccountDeletedHandler = null;
+    console.log('[ListenerRegistry] Unregistered onUserAccountDeleted handler');
+  }
+};
+
 // Export singleton registry instance
 const registry = new ListenerRegistry();
 

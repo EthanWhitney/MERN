@@ -416,3 +416,45 @@ export const offMemberLeftServer = (callback: (data: any) => void) => {
   if (!socket) return;
   socket.off('member-left-server', callback);
 };
+
+// ========== PHASE 5.1: PROFILE & ACCOUNT CHANGE EVENTS ==========
+
+export const onProfilePictureChanged = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('profile-picture-changed', callback);
+};
+
+export const offProfilePictureChanged = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('profile-picture-changed', callback);
+};
+
+export const onServerProfileUpdated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('server-profile-updated', callback);
+};
+
+export const offServerProfileUpdated = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('server-profile-updated', callback);
+};
+
+export const onMemberVoiceStateChanged = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('member-voice-state-changed', callback);
+};
+
+export const offMemberVoiceStateChanged = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('member-voice-state-changed', callback);
+};
+
+export const onUserAccountDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.on('user-account-deleted', callback);
+};
+
+export const offUserAccountDeleted = (callback: (data: any) => void) => {
+  if (!socket) return;
+  socket.off('user-account-deleted', callback);
+};

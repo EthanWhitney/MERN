@@ -16,6 +16,8 @@ function MemberRow({
 }) {
   const displayName = member.serverSpecificName || member.username;
   const avatarSrc = normalizeProfilePicturePath(member.profilePicture);
+  const isMuted = member.voiceState?.muted;
+  const isDeafened = member.voiceState?.deafened;
 
   return (
     <div className={`member-row ${isOnline ? 'member-online' : ''}`}>
@@ -33,6 +35,12 @@ function MemberRow({
         />
       </div>
       <span className="member-name">{displayName}</span>
+      {(isMuted || isDeafened) && (
+        <div className="member-voice-badges">
+          {isMuted && <span className="voice-badge muted" title="Muted">🔇</span>}
+          {isDeafened && <span className="voice-badge deafened" title="Deafened">🔕</span>}
+        </div>
+      )}
     </div>
   );
 }

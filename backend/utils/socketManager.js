@@ -232,6 +232,243 @@ const getPendingEventsForUser = async (db, userId) => {
   }
 };
 
+// ========== PHASE 5.1: Profile & Account Change Broadcasting ==========
+
+/**
+ * Broadcast profile picture change to all friends and server members
+ */
+const broadcastProfilePictureChanged = async (db, userId, newAvatarUrl) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastProfilePictureChanged: db not available');
+      return;
+    }
+
+    const userObjId = new (require('mongodb')).ObjectId(userId);
+    
+    // Get user's friends
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { friends: 1, servers: 1, username: 1 } }
+    );
+
+    if (!user) return;
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      newAvatarUrl,
+      timestamp
+    };
+
+    // Broadcast to all friends
+    if (user.friends && user.friends.length > 0) {
+      user.friends.forEach(friendId => {
+        emitToUser(friendId.toString(), 'profile-picture-changed', eventData);
+      });
+      console.log(`[socketManager] profile-picture-changed broadcast to ${user.friends.length} friend(s)`);
+    }
+
+    // Broadcast to all servers where user is member
+    if (user.servers && user.servers.length > 0) {
+      for (const serverId of user.servers) {
+        await emitToServerMembers(db, serverId, 'profile-picture-changed', eventData, userId);
+      }
+    }
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastProfilePictureChanged:', err);
+  }
+};
+
+/**
+ * Broadcast server profile update (name/avatar in specific server)
+ */
+const broadcastServerProfileUpdated = async (db, serverId, userId, updates) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastServerProfileUpdated: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      serverId: serverId.toString(),
+      ...updates,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'server-profile-updated', eventData);
+    console.log(`[socketManager] server-profile-updated broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastServerProfileUpdated:', err);
+  }
+};
+
+/**
+ * Broadcast member voice state change (mute/deafen)
+ */
+const broadcastMemberVoiceStateChanged = async (db, serverId, userId, voiceState) => {
+  try {
+    if (!db) {
+      console.warn('[socketManager] broadcastMemberVoiceStateChanged: db not available');
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      serverId: serverId.toString(),
+      isMuted: voiceState.isMuted,
+      isDeafened: voiceState.isDeafened,
+      timestamp
+    };
+
+    await emitToServerMembers(db, serverId, 'member-voice-state-changed', eventData);
+    console.log(`[socketManager] member-voice-state-changed broadcast to server ${serverId}`);
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastMemberVoiceStateChanged:', err);
+  }
+};
+
+/**
+ * Broadcast user account deletion to all friends and servers
+ */
+const broadcastUserAccountDeleted = async (db, userId) => {
+  try {
+    if (!db || !io) {
+      console.warn('[socketManager] broadcastUserAccountDeleted: db or io not available');
+      return;
+    }
+
+    const userObjId = new (require('mongodb')).ObjectId(userId);
+    
+    // Get user's friends and servers before deletion
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { friends: 1, servers: 1, username: 1 } }
+    );
+
+    if (!user) return;
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      username: user.username,
+      timestamp
+    };
+
+    // Broadcast to all friends
+    if (user.friends && user.friends.length > 0) {
+      user.friends.forEach(friendId => {
+        emitToUser(friendId.toString(), 'user-account-deleted', eventData);
+      });
+      console.log(`[socketManager] user-account-deleted broadcast to ${user.friends.length} friend(s)`);
+    }
+
+    // Broadcast to all servers
+    if (user.servers && user.servers.length > 0) {
+      for (const serverId of user.servers) {
+        await emitToServerMembers(db, serverId, 'user-account-deleted', eventData);
+      }
+    }
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserAccountDeleted:', err);
+  }
+};
+
+/**
+ * Broadcast user came online to all friends and server members
+ */
+const broadcastUserOnline = async (db, userId) => {
+  try {
+    if (!db || !io) {
+      console.warn('[socketManager] broadcastUserOnline: db or io not available');
+      return;
+    }
+
+    const userObjId = new (require('mongodb')).ObjectId(userId);
+    
+    // Get user's friends, servers, and username
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { friends: 1, servers: 1, username: 1 } }
+    );
+
+    if (!user) return;
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      username: user.username,
+      timestamp
+    };
+
+    // Broadcast to all friends
+    if (user.friends && user.friends.length > 0) {
+      user.friends.forEach(friendId => {
+        emitToUser(friendId.toString(), 'user-online', eventData);
+      });
+      console.log(`[socketManager] user-online broadcast to ${user.friends.length} friend(s)`);
+    }
+
+    // Broadcast to all server members
+    if (user.servers && user.servers.length > 0) {
+      for (const serverId of user.servers) {
+        await emitToServerMembers(db, serverId, 'member-online', { userId: userId.toString() });
+      }
+    }
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserOnline:', err);
+  }
+};
+
+/**
+ * Broadcast user went offline to all friends and server members
+ */
+const broadcastUserOffline = async (db, userId) => {
+  try {
+    if (!db || !io) {
+      console.warn('[socketManager] broadcastUserOffline: db or io not available');
+      return;
+    }
+
+    const userObjId = new (require('mongodb')).ObjectId(userId);
+    
+    // Get user's friends, servers, and username
+    const user = await db.collection('users').findOne(
+      { _id: userObjId },
+      { projection: { friends: 1, servers: 1, username: 1 } }
+    );
+
+    if (!user) return;
+
+    const timestamp = new Date().toISOString();
+    const eventData = {
+      userId: userId.toString(),
+      username: user.username,
+      timestamp
+    };
+
+    // Broadcast to all friends
+    if (user.friends && user.friends.length > 0) {
+      user.friends.forEach(friendId => {
+        emitToUser(friendId.toString(), 'user-offline', eventData);
+      });
+      console.log(`[socketManager] user-offline broadcast to ${user.friends.length} friend(s)`);
+    }
+
+    // Broadcast to all server members
+    if (user.servers && user.servers.length > 0) {
+      for (const serverId of user.servers) {
+        await emitToServerMembers(db, serverId, 'member-offline', { userId: userId.toString() });
+      }
+    }
+  } catch (err) {
+    console.error('[socketManager] Error in broadcastUserOffline:', err);
+  }
+};
+
 module.exports = {
   setSocketIO,
   getIO,
@@ -254,4 +491,10 @@ module.exports = {
   broadcastMemberOffline,
   queueEventForUser,
   getPendingEventsForUser,
+  broadcastProfilePictureChanged,
+  broadcastServerProfileUpdated,
+  broadcastMemberVoiceStateChanged,
+  broadcastUserAccountDeleted,
+  broadcastUserOnline,
+  broadcastUserOffline,
 };

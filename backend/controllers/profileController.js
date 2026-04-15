@@ -5,6 +5,7 @@ const jwtManager = require('../createJWT');
 const { generateVerificationCode } = require('../utils/codeGenerator');
 const sgMail = require('@sendgrid/mail');
 const { getVerificationCodeEmailTemplate, getVerificationCodeEmailTextTemplate } = require('../utils/emailTemplates');
+const socketManager = require('../utils/socketManager');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -37,6 +38,9 @@ const updateProfilePicture = async (req, res) => {
       error = 'User not found';
       return res.status(404).json({ success: false, error });
     }
+
+    // ========== PHASE 5.1: Broadcast profile picture change ==========
+    await socketManager.broadcastProfilePictureChanged(db, userId, profilePicture);
 
     return res.status(200).json({ success: true, profilePicture, error: '' });
   } catch (e) {

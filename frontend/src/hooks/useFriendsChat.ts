@@ -17,7 +17,9 @@ import {
   onUserOnline,
   offUserOnline,
   onUserOffline,
-  offUserOffline
+  offUserOffline,
+  onProfilePictureChanged,
+  offProfilePictureChanged
 } from '../services/socketService';
 
 interface Friend {
@@ -187,6 +189,27 @@ export const useFriendsChat = (recipientId?: string) => {
     loadPendingRequests();
   }, [userId]);
 
+  // Helper function to reload friends list (includes online status)
+  const reloadFriendsList = async () => {
+    if (!userId) return;
+
+    try {
+      const response = await authFetch(`api/users/friends`);
+      if (!response.ok) {
+        console.warn('Failed to reload friends list');
+        return;
+      }
+
+      const payload = await response.json();
+      if (payload.friends) {
+        console.log('[useFriendsChat] Reloaded friends list with updated online status');
+        setFriends(payload.friends);
+      }
+    } catch (err: any) {
+      console.error('Error reloading friends list:', err);
+    }
+  };
+
   // Helper function to reload friends and pending requests
   const reloadFriendsData = async () => {
     try {
@@ -205,6 +228,20 @@ export const useFriendsChat = (recipientId?: string) => {
       console.error('Error reloading friends data:', err);
     }
   };
+
+  // ========== PHASE 3.4: Refresh friends online status on socket connection ==========
+  // When socket connects, refresh the friends list to get updated online status
+  useEffect(() => {
+    if (!userId || friends.length === 0) return;
+
+    // Refresh online status after socket connects
+    const timer = setTimeout(() => {
+      console.log('[useFriendsChat] Refreshing friends online status after socket ready');
+      reloadFriendsList();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   // Listen for friend request received notifications
   useEffect(() => {
@@ -361,6 +398,44 @@ export const useFriendsChat = (recipientId?: string) => {
     };
   }, [userId, selectedFriend]);
 
+  // Listen for profile picture changes
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleProfilePictureChanged = (data: any) => {
+      const { userId: changedUserId, profilePicture } = data;
+      console.log('[useFriendsChat] Profile picture changed for user:', changedUserId);
+      
+      // Update the friend in the friends array
+      setFriends(prevFriends =>
+        prevFriends.map(friend =>
+          friend._id === changedUserId ? { ...friend, profilePicture } : friend
+        )
+      );
+      
+      // Also update pending requests if this user is there
+      setPendingRequests(prevRequests =>
+        prevRequests.map(request =>
+          request._id === changedUserId ? { ...request, profilePicture } : request
+        )
+      );
+      
+      // If this is the selected friend, update it too
+      if (selectedFriend && selectedFriend._id === changedUserId) {
+        setSelectedFriend({ ...selectedFriend, profilePicture });
+      }
+    };
+
+    // Register listener immediately (no delay)
+    onProfilePictureChanged(handleProfilePictureChanged);
+
+    return () => {
+      offProfilePictureChanged(handleProfilePictureChanged);
+    };
+  }, [userId, selectedFriend]);
+
   // Load messages when friend is selected and set up real-time listener
   // Uses recipientId param if provided, otherwise uses selectedFriend state
   useEffect(() => {
@@ -427,11 +502,11 @@ export const useFriendsChat = (recipientId?: string) => {
       console.log('[useFriendsChat] Received DM message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
       
-      // Update last activity for the sender if it's a friend
-      if (incomingMessage.sender?.userId) {
+      // Update last activity for the sender
+      if (incomingMessage.senderId) {
         setLastActivityMap(prevMap => ({
           ...prevMap,
-          [incomingMessage.sender.userId]: new Date().toISOString(),
+          [incomingMessage.senderId]: new Date().toISOString(),
         }));
       }
     };

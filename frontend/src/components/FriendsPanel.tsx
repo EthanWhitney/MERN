@@ -160,7 +160,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
                         All Friends
                       </h3>
                     </div>
-                    {friends.map((friend) => (
+                    {sortedFriends.map((friend) => (
                       <article
                         className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
                         key={friend._id}

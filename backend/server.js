@@ -184,6 +184,14 @@ io.on('connection', async (socket) => {
     } catch (err) {
       console.error('[CONNECTION] Error creating socket session:', err);
     }
+
+    // ========== ADD SOCKET TO IN-MEMORY tracking ==========
+    // This is needed for isUserOnline() to work correctly
+    if (!userSocketsMultiple.has(userId)) {
+      userSocketsMultiple.set(userId, new Set());
+    }
+    userSocketsMultiple.get(userId).add(socket.id);
+    console.log(`[CONNECTION] Socket ${socket.id} added to userSocketsMultiple for ${userId}`);
     
     // Track this socket for the user (for backward compat, will remove after Phase 2)
     const userSockets = new Map(); // Temporary - for voice rooms access
@@ -244,13 +252,8 @@ io.on('connection', async (socket) => {
           await socketManager.broadcastMemberOnline(db, new ObjectId(sid), new ObjectId(userId));
         }
 
-        // Notify friends
-        if (user && user.friends && user.friends.length > 0) {
-          io.to('status-updates').emit('user-online', {
-            userId: userId,
-            username: user.username
-          });
-        }
+        // Broadcast user online to all friends via socket.io
+        await socketManager.broadcastUserOnline(db, userId);
       } else {
         console.log(`[ONLINE] User ${userId} has ${sessionCount} sessions (new session: ${socket.id})`);
       }
@@ -382,13 +385,8 @@ io.on('connection', async (socket) => {
           );
           console.log(`[OFFLINE] User ${userId} isOnline updated to false: ${updateResult.modifiedCount} documents modified`);
           
-          const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-          if (user && user.friends && user.friends.length > 0) {
-            io.to('status-updates').emit('user-offline', {
-              userId: userId,
-              username: user.username,
-            });
-          }
+          // Broadcast user offline to all friends and servers
+          await socketManager.broadcastUserOffline(db, userId);
           
           // Notify members in all servers that this user went offline
           const serverIds = socket.data?.serverIds || [];
