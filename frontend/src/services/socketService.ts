@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 let connectionState = 0; // Counter to trigger useEffect refetch on reconnect
 let messageCallbacks: Set<(message: any) => void> = new Set();
 let currentServerSubscription: { serverId: string; channelId: string } | null = null;
-let joinListenerSetup = false; // Track if join-on-connect listener is set up
+let messageListenerHandler: ((message: any) => void) | null = null;
 
 const getSocketUrl = () => {
   if (typeof window === 'undefined') return 'http://localhost:5000';
@@ -46,24 +46,43 @@ export const initSocket = (userId: string) => {
     socket.on('connect', () => {
       console.log('[Socket] Connected with ID:', socket?.id);
       connectionState++; // Increment to trigger useEffect refetch
-      
-      // If there's a pending channel subscription, join it
-      if (currentServerSubscription && !joinListenerSetup) {
-        const { serverId, channelId } = currentServerSubscription;
-        console.log('[Socket] Joining channel:', serverId, channelId);
-        socket?.emit('join-server-channel', { serverId, channelId });
-        joinListenerSetup = true;
-      }
     });
 
     socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
-      joinListenerSetup = false; // Reset so we rejoin after reconnect
     });
+
+    // Attach global message listener
+    const attachMessageListener = () => {
+      // Remove old listener if one exists
+      if (messageListenerHandler && socket) {
+        socket.off('receive-message', messageListenerHandler);
+      }
+
+      // Create new handler
+      messageListenerHandler = (message: any) => {
+        console.log('[Socket] Received message event, notifying', messageCallbacks.size, 'callbacks');
+        // Notify all registered callbacks
+        messageCallbacks.forEach(callback => {
+          try {
+            callback(message);
+          } catch (err) {
+            console.error('[Socket] Error in message callback:', err);
+          }
+        });
+      };
+
+      socket?.on('receive-message', messageListenerHandler);
+    };
+
+    attachMessageListener();
 
     socket.on('reconnect', () => {
       console.log('[Socket] Reconnected');
       connectionState++; // Increment to trigger useEffect refetch
+      
+      // Reattach message listener after reconnect
+      attachMessageListener();
       
       // Rejoin the current channel subscription if one exists
       if (currentServerSubscription) {
@@ -77,21 +96,94 @@ export const initSocket = (userId: string) => {
       console.error('[Socket] Connection error:', error);
     });
 
-    // Global socket listener for messages - this persists across component mounts/unmounts
-    socket.on('receive-message', (message: any) => {
-      console.log('[Socket] Received message event, notifying', messageCallbacks.size, 'callbacks');
-      // Notify all registered callbacks
-      messageCallbacks.forEach(callback => {
-        try {
-          callback(message);
-        } catch (err) {
-          console.error('[Socket] Error in message callback:', err);
+    // ========== PHASE 1.2: Frontend Heartbeat (Detect Dead Connections) ==========
+    // Respond to ping requests from backend
+    socket.on('ping', () => {
+      console.log('[Heartbeat] Received ping from backend, sending pong');
+      socket?.emit('pong');
+    });
+
+    // Start client-side heartbeat: emit ping every 25s, expect pong within 10s
+    let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+    let lastPongTime = Date.now();
+    
+    const startHeartbeat = () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      
+      heartbeatInterval = setInterval(() => {
+        if (!socket?.connected) {
+          console.log('[Heartbeat] Socket not connected, skipping heartbeat');
+          return;
         }
-      });
+        
+        const timeSinceLastPong = Date.now() - lastPongTime;
+        
+        if (timeSinceLastPong > 35000) { // No pong in 35 seconds (25s interval + 10s timeout)
+          console.error('[Heartbeat] No pong received in 35s - connection appears dead, forcing reconnect');
+          socket?.disconnect();
+          socket?.connect();
+          lastPongTime = Date.now();
+          return;
+        }
+        
+        console.log('[Heartbeat] Emitting ping to backend');
+        socket?.emit('ping');
+      }, 25000); // Every 25 seconds
+    };
+    
+    socket.on('pong', () => {
+      console.log('[Heartbeat] Received pong from backend');
+      lastPongTime = Date.now();
+    });
+
+    // Start heartbeat on connect
+    socket.on('connect', () => {
+      startHeartbeat();
+    });
+
+    socket.on('disconnect', () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
     });
   }
 
   return socket;
+};
+
+/**
+ * Wait for socket to be connected. Useful for hooks and components
+ * that need to attach listeners only after socket is ready.
+ * Timeout after 5 seconds to prevent infinite hanging.
+ */
+export const waitForSocketConnection = (timeoutMs = 5000): Promise<Socket> => {
+  return new Promise((resolve, reject) => {
+    const s = getSocket();
+    
+    if (!s) {
+      reject(new Error('Socket not initialized'));
+      return;
+    }
+
+    if (s.connected) {
+      resolve(s);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      s.off('connect', onConnect);
+      reject(new Error('Socket connection timeout'));
+    }, timeoutMs);
+
+    const onConnect = () => {
+      clearTimeout(timeout);
+      s.off('connect', onConnect);
+      resolve(s);
+    };
+
+    s.on('connect', onConnect);
+  });
 };
 
 export const getSocket = () => socket;
@@ -102,6 +194,7 @@ export const disconnectSocket = () => {
     socket = null;
     messageCallbacks.clear();
     currentServerSubscription = null;
+    messageListenerHandler = null;
   }
 };
 
@@ -112,6 +205,7 @@ export const resetSocket = () => {
   socket = null;
   messageCallbacks.clear();
   currentServerSubscription = null;
+  messageListenerHandler = null;
 };
 
 export const joinDMRoom = (recipientId: string) => {
@@ -144,7 +238,7 @@ export const joinServerChannel = (serverId: string, channelId: string) => {
     return;
   }
   
-  // Emit the join - Socket.IO will buffer it if not connected
+  // Emit the join - Socket.IO will buffer it if not connected yet
   socket.emit('join-server-channel', { serverId, channelId });
   console.log('[joinServerChannel] Emitted join-server-channel event');
 };
@@ -174,7 +268,11 @@ export const offReceiveMessage = (callback: (message: any) => void) => {
 // Friend request handlers
 export const onFriendRequestReceived = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onFriendRequestReceived] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onFriendRequestReceived] Socket not connected, listener may not work');
   }
   socket.on('friend-request-received', callback);
 };
@@ -186,7 +284,11 @@ export const offFriendRequestReceived = (callback: (data: any) => void) => {
 
 export const onFriendRequestAccepted = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onFriendRequestAccepted] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onFriendRequestAccepted] Socket not connected, listener may not work');
   }
   socket.on('friend-request-accepted', callback);
 };
@@ -198,7 +300,11 @@ export const offFriendRequestAccepted = (callback: (data: any) => void) => {
 
 export const onFriendRequestDeclined = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onFriendRequestDeclined] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onFriendRequestDeclined] Socket not connected, listener may not work');
   }
   socket.on('friend-request-declined', callback);
 };
@@ -210,7 +316,11 @@ export const offFriendRequestDeclined = (callback: (data: any) => void) => {
 
 export const onFriendRemoved = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onFriendRemoved] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onFriendRemoved] Socket not connected, listener may not work');
   }
   socket.on('friend-removed', callback);
 };
@@ -223,7 +333,11 @@ export const offFriendRemoved = (callback: (data: any) => void) => {
 // User online/offline handlers
 export const onUserOnline = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onUserOnline] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onUserOnline] Socket not connected, listener may not work');
   }
   socket.on('user-online', callback);
 };
@@ -235,7 +349,11 @@ export const offUserOnline = (callback: (data: any) => void) => {
 
 export const onUserOffline = (callback: (data: any) => void) => {
   if (!socket) {
+    console.warn('[onUserOffline] Socket not initialized');
     return;
+  }
+  if (!socket.connected) {
+    console.warn('[onUserOffline] Socket not connected, listener may not work');
   }
   socket.on('user-offline', callback);
 };

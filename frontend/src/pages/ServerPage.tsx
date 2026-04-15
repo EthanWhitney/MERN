@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ServerPage.css';
-import { authFetch } from '../utils/authFetch';
 import { normalizeProfilePicturePath } from '../utils/profilePictureUtils';
 import { getServer, deleteServer, leaveServer, deleteTextChannel, type Server, type Channel } from '../services/serverApi';
 import ServerList from '../components/ServerList';
@@ -12,10 +11,9 @@ import MessageComposer from '../components/MessageComposer';
 import MessageList from '../components/MessageList';
 import UserControls from '../components/UserControls';
 import { useChatThread } from '../hooks/useChatThread';
+import { useServerMembers } from '../hooks/useServerMembers';
 import { initSocket, joinServerChannel, leaveServerChannel } from '../services/socketService';
 import { VoiceChannel } from '../components/VoiceChannel';
-
-type MemberStatus = 'online' | 'idle' | 'dnd' | 'offline';
 
 const ServerPage = () => {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
@@ -32,12 +30,14 @@ const ServerPage = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showInviteLinksPanel, setShowInviteLinksPanel] = useState(false);
   const [showServerMenu, setShowServerMenu] = useState(false);
-  const [serverProfiles, setServerProfiles] = useState<any[]>([]);
   const [activeVoiceChannel, setActiveVoiceChannel] = useState<{id: string, name: string} | null>(null);
   const [showCreateVoiceModal, setShowCreateVoiceModal] = useState(false);
   const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
   const [isCreatingVoice, setIsCreatingVoice] = useState(false);
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
+
+  // Use the server members hook for real-time member updates
+  const { members, onlineUserIds } = useServerMembers(serverId);
 
   const handleCreateVoiceChannel = async () => {
     if (!newVoiceChannelName.trim() || !serverId) return;
@@ -91,37 +91,12 @@ const ServerPage = () => {
   useEffect(() => {
     if (serverId) {
       loadServer(serverId);
-      loadServerProfiles(serverId);
     }
   }, [serverId]);
-
-  const loadServerProfiles = useCallback(async (id: string) => {
-    try {
-      console.log('Loading server profiles for:', id);
-      const response = await authFetch(`api/servers/${id}/members/profiles`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Server profiles loaded:', data);
-        setServerProfiles(data.members || []);
-      } else {
-        console.error('Failed to load server profiles:', response.status, response.statusText);
-      }
-    } catch (err) {
-      console.error('Error loading server profiles:', err);
-    }
-  }, []);
 
   const handleDMClick = useCallback((userId: string) => {
     navigate(`/friends/${userId}`);
   }, [navigate]);
-
-  const getMemberStatus = useCallback((member: any): MemberStatus => {
-    const raw = (member?.status || member?.presence || member?.state || '').toString().toLowerCase();
-    if (raw === 'online' || member?.online === true || member?.isOnline === true) return 'online';
-    if (raw === 'idle') return 'idle';
-    if (raw === 'dnd' || raw === 'do_not_disturb' || raw === 'donotdisturb') return 'dnd';
-    return 'offline';
-  }, []);
 
   const getMemberRole = useCallback((member: any): string => {
     return (
@@ -145,14 +120,15 @@ const ServerPage = () => {
   }, []);
 
   const memberGroups = useMemo(() => {
-    const members = Array.isArray(serverProfiles) ? serverProfiles : [];
+    const memberList = Array.isArray(members) ? members : [];
     const online: any[] = [];
     const offline: any[] = [];
 
-    for (const member of members) {
-      const status = getMemberStatus(member);
-      if (status === 'offline') offline.push(member);
-      else online.push(member);
+    for (const member of memberList) {
+      // Check if member is online by looking them up in onlineUserIds
+      const isOnline = onlineUserIds.has(member.userId);
+      if (isOnline) online.push(member);
+      else offline.push(member);
     }
 
     const byName = (a: any, b: any) => {
@@ -165,7 +141,7 @@ const ServerPage = () => {
     offline.sort(byName);
 
     return { online, offline };
-  }, [serverProfiles, getMemberStatus]);
+  }, [members, onlineUserIds]);
 
   // Initialize socket and manage channel room subscriptions
   useEffect(() => {
@@ -476,11 +452,11 @@ const ServerPage = () => {
           channelName={activeVoiceChannel.name}
           currentUserId={currentUserId}
           onLeave={() => setActiveVoiceChannel(null)}
-          serverProfiles={serverProfiles}
+          serverProfiles={members}
         />
       )}
 
-      <UserControls isServerPage={true} serverId={serverId} serverProfiles={serverProfiles} onProfileUpdate={() => serverId && loadServerProfiles(serverId)} />
+      <UserControls isServerPage={true} serverId={serverId} serverProfiles={members} onProfileUpdate={() => {}} />
       </div> 
 
       {/* Main Chat Area */}
@@ -517,7 +493,7 @@ const ServerPage = () => {
                 isLoadingMore={isLoadingMore}
                 onLoadMore={loadMoreMessages}
                 allMessagesLoaded={allMessagesLoaded}
-                serverProfiles={serverProfiles}
+                serverProfiles={members}
                 onDMClick={handleDMClick}
               />
             </>
@@ -550,7 +526,7 @@ const ServerPage = () => {
           <div className="member-group">
             <p className="member-group-title">Online - {memberGroups.online.length}</p>
             {memberGroups.online.map((member: any) => {
-              const status = getMemberStatus(member);
+              const status = 'online';
               const name = member?.username || member?.name || member?.displayName || 'Unknown';
               const role = getMemberRole(member);
               const roleColor = getMemberColor(member);
@@ -585,7 +561,7 @@ const ServerPage = () => {
           <div className="member-group">
             <p className="member-group-title">Offline - {memberGroups.offline.length}</p>
             {memberGroups.offline.map((member: any) => {
-              const status = getMemberStatus(member);
+              const status = 'offline';
               const name = member?.username || member?.name || member?.displayName || 'Unknown';
               const role = getMemberRole(member);
               const roleColor = getMemberColor(member);

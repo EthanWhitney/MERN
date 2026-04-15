@@ -10,7 +10,7 @@ import {
 import type { ChatMessage, Thread } from '../types/chat';
 import { authFetch } from '../utils/authFetch';
 import { toMessage } from '../utils/chatAdapter';
-import { onReceiveMessage, offReceiveMessage } from '../services/socketService';
+import { onReceiveMessage, offReceiveMessage, getSocket } from '../services/socketService';
 
 export const useChatThread = (serverId?: string, channelId?: string, recieverId?: string) => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -139,11 +139,30 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
       }
     };
 
+    // Register message callback
     onReceiveMessage(handleSocketMessage);
+
+    // Handle socket reconnection - reattach listeners
+    const socket = getSocket();
+    const onReconnect = () => {
+      console.log('[useChatThread] Socket reconnected, re-registering message listener');
+      // The callback should already be in the set, but call again to ensure
+      onReceiveMessage(handleSocketMessage);
+    };
+
+    if (socket) {
+      socket.on('reconnect', onReconnect);
+    }
 
     return () => {
       console.log('[useChatThread] Cleaning up socket listener');
       offReceiveMessage(handleSocketMessage);
+      
+      // Clean up reconnect listener
+      const currentSocket = getSocket();
+      if (currentSocket) {
+        currentSocket.off('reconnect', onReconnect);
+      }
     };
   }, [serverId, channelId, activeThread?.id]);
 

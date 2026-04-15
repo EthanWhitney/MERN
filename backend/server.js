@@ -98,6 +98,69 @@ const userSocketsMultiple = new Map();
 
 const voiceRooms = {};
 
+// ========== PHASE 1.1: Initialize socketSessions collection for atomic operations ==========
+async function initializeSocketSessions() {
+  try {
+    const db = client.db('discord_clone');
+    
+    // Ensure the collection exists
+    const collections = await db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    
+    if (!collectionNames.includes('socketSessions')) {
+      console.log('[INIT] Creating socketSessions collection...');
+      await db.createCollection('socketSessions');
+    }
+    
+    // Create indexes for fast queries
+    const collection = db.collection('socketSessions');
+    
+    // Index on userId for quick session lookups
+    await collection.createIndex({ userId: 1 });
+    console.log('[INIT] Created index on userId');
+    
+    // Index on userId + socketId for unique session tracking
+    await collection.createIndex({ userId: 1, socketId: 1 }, { unique: true });
+    console.log('[INIT] Created unique index on userId + socketId');
+    
+    // TTL index: auto-delete sessions that haven't been updated in 24 hours
+    // This prevents stale sessions from accumulating
+    await collection.createIndex(
+      { lastHeartbeat: 1 },
+      { expireAfterSeconds: 86400 }
+    );
+    console.log('[INIT] Created TTL index on lastHeartbeat (24 hours)');
+    
+    console.log('[INIT] socketSessions collection ready');
+    
+    // ========== PHASE 1.3: Initialize pendingEvents collection ==========
+    if (!collectionNames.includes('pendingEvents')) {
+      console.log('[INIT] Creating pendingEvents collection...');
+      await db.createCollection('pendingEvents');
+    }
+    
+    const eventCollection = db.collection('pendingEvents');
+    
+    // Index on userId for quick event lookup
+    await eventCollection.createIndex({ userId: 1 });
+    console.log('[INIT] Created index on userId');
+    
+    // Index on createdAt for TTL deletion
+    await eventCollection.createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: 3600 } // Keep events for 1 hour
+    );
+    console.log('[INIT] Created TTL index on createdAt (1 hour)');
+    
+    console.log('[INIT] pendingEvents collection ready');
+  } catch (err) {
+    console.error('[INIT] Error initializing collections:', err);
+  }
+}
+
+// Initialize on server startup
+initializeSocketSessions();
+
 // Socket.IO connection handling
 io.on('connection', async (socket) => {
   console.log(`[SOCKET] New connection received. Socket ID: ${socket.id}`);
@@ -107,38 +170,64 @@ io.on('connection', async (socket) => {
   if (userId) {
     console.log(`[CONNECTION] User ${userId} connecting with socket ${socket.id}`);
     
-    // Track this socket for the user
-    userSockets.set(userId, socket.id);
+    const db = client.db('discord_clone');
     
-    // Also track multiple connections per user
-    if (!userSocketsMultiple.has(userId)) {
-      userSocketsMultiple.set(userId, new Set());
-    }
-    const wasFirstSocket = userSocketsMultiple.get(userId).size === 0;
-    userSocketsMultiple.get(userId).add(socket.id);
-    
-    const socketCount = userSocketsMultiple.get(userId).size;
-    console.log(`[CONNECTION] User ${userId} now has ${socketCount} socket(s). First socket: ${wasFirstSocket}`);
-    
-    // Join the status-updates room to receive online/offline notifications
-    socket.join('status-updates');
-
-    // Look up user's servers to join presence rooms and broadcast online status
+    // Create socket session atomically in DB
     try {
-      const db = client.db('discord_clone');
+      await db.collection('socketSessions').insertOne({
+        userId: new ObjectId(userId),
+        socketId: socket.id,
+        createdAt: now,
+        lastHeartbeat: now
+      });
+      console.log(`[CONNECTION] Socket session created for ${userId}`);
+    } catch (err) {
+      console.error('[CONNECTION] Error creating socket session:', err);
+    }
+    
+    // Track this socket for the user (for backward compat, will remove after Phase 2)
+    const userSockets = new Map(); // Temporary - for voice rooms access
+    
+    // Check if this is the first socket by counting remaining sessions in DB
+    try {
+      const sessionCount = await db.collection('socketSessions').countDocuments({ 
+        userId: new ObjectId(userId) 
+      });
+      const wasFirstSocket = sessionCount === 1; // Just inserted one
+      
+      console.log(`[CONNECTION] User ${userId} now has ${sessionCount} session(s). First session: ${wasFirstSocket}`);
+      
+      // Join the status-updates room to receive online/offline notifications
+      socket.join('status-updates');
+
+      // ========== PHASE 1.3: Retrieve and Replay Pending Events ==========
+      // Get any events that were queued for this user while they were offline
+      try {
+        const pendingEvents = await socketManager.getPendingEventsForUser(db, new ObjectId(userId));
+        if (pendingEvents.length > 0) {
+          console.log(`[RECONNECT] Replaying ${pendingEvents.length} pending events to user ${userId}`);
+          pendingEvents.forEach(event => {
+            console.log(`[RECONNECT] Replaying ${event.eventName} to socket ${socket.id}`);
+            socket.emit(event.eventName, event.eventData);
+          });
+        }
+      } catch (err) {
+        console.error('[RECONNECT] Error retrieving pending events:', err);
+      }
+
+      // Look up user's servers
       const user = await db.collection('users').findOne(
         { _id: new ObjectId(userId) },
         { projection: { servers: 1, friends: 1, username: 1 } }
       );
       const serverIds = (user?.servers || []).map(id => id.toString());
       socket.data.serverIds = serverIds;
+      socket.data.userId = userId;
 
-      // Join a presence room for each server the user belongs to
-      serverIds.forEach(sid => socket.join(`server-presence:${sid}`));
-
-      // If this is the FIRST socket for this user, notify friends and servers that they came online
+      // If this is the FIRST socket for this user, set online and broadcast
       if (wasFirstSocket) {
-        console.log(`[ONLINE] User ${userId} coming online - setting isOnline to true (first socket: ${socket.id})`);
+        console.log(`[ONLINE] User ${userId} coming online - setting isOnline to true (first session: ${socket.id})`);
+        
         // Update user document to mark as online
         try {
           const updateResult = await db.collection('users').updateOne(
@@ -150,23 +239,23 @@ io.on('connection', async (socket) => {
           console.error('[ONLINE] Error updating user isOnline status:', err);
         }
 
-        // Tell all other members in those servers that this user just came online
-        serverIds.forEach(sid => {
-          socket.to(`server-presence:${sid}`).emit('member-online', { userId });
-        });
+        // Tell all server members that this user came online
+        for (const sid of serverIds) {
+          await socketManager.broadcastMemberOnline(db, new ObjectId(sid), new ObjectId(userId));
+        }
 
-        // Notify all friends that they came online
+        // Notify friends
         if (user && user.friends && user.friends.length > 0) {
-          // Broadcast to the status-updates room (all connected users)
           io.to('status-updates').emit('user-online', {
             userId: userId,
             username: user.username
           });
         }
       } else {
-        console.log(`[ONLINE] User ${userId} has ${socketCount} sockets now (new socket: ${socket.id})`);
+        console.log(`[ONLINE] User ${userId} has ${sessionCount} sessions (new session: ${socket.id})`);
       }
     } catch (e) {
+      console.error('[CONNECTION] Error during connection setup:', e);
       socket.data.serverIds = [];
     }
   }
@@ -204,6 +293,17 @@ io.on('connection', async (socket) => {
       ...message,
       senderId: socket.handshake.auth.userId,
     });
+  });
+
+  // ========== PHASE 1.2: Ping/Pong Handlers (Heartbeat Response) ==========
+  socket.on('ping', () => {
+    console.log(`[HEARTBEAT] Received ping from client ${socket.id} (user: ${userId})`);
+    socket.emit('pong');
+  });
+
+  socket.on('pong', () => {
+    console.log(`[HEARTBEAT] Received pong from client ${socket.id} (user: ${userId})`);
+    // Just log it - the health check monitor uses DB queries to verify sessions
   });
 
   socket.on('join-voice', ({ channelId, userId: vUserId, username: vUsername }) => {
@@ -255,47 +355,60 @@ io.on('connection', async (socket) => {
  
   socket.on('disconnect', async () => {
     if (userId) {
+      const db = client.db('discord_clone');
+      
+      try {
+        // Atomically remove this socket session from DB
+        await db.collection('socketSessions').deleteOne({
+          userId: new ObjectId(userId),
+          socketId: socket.id
+        });
+        console.log(`[OFFLINE] Socket ${socket.id} for user ${userId} session removed from DB`);
+        
+        // Check if ANY socket sessions remain for this user in DB (atomic query)
+        const remainingSessionCount = await db.collection('socketSessions').countDocuments({
+          userId: new ObjectId(userId)
+        });
+        
+        console.log(`[OFFLINE] User ${userId} has ${remainingSessionCount} remaining session(s)`);
+        
+        if (remainingSessionCount === 0) {
+          console.log(`[OFFLINE] User ${userId} has NO remaining sockets - setting isOnline to false`);
+          
+          // Update user document to mark as offline
+          const updateResult = await db.collection('users').updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { isOnline: false } }
+          );
+          console.log(`[OFFLINE] User ${userId} isOnline updated to false: ${updateResult.modifiedCount} documents modified`);
+          
+          const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+          if (user && user.friends && user.friends.length > 0) {
+            io.to('status-updates').emit('user-offline', {
+              userId: userId,
+              username: user.username,
+            });
+          }
+          
+          // Notify members in all servers that this user went offline
+          const serverIds = socket.data?.serverIds || [];
+          for (const sid of serverIds) {
+            await socketManager.broadcastMemberOffline(db, new ObjectId(sid), new ObjectId(userId));
+          }
+        } else {
+          console.log(`[OFFLINE] User ${userId} still has ${remainingSessionCount} session(s) - keeping online`);
+        }
+      } catch (err) {
+        console.error('[OFFLINE] Error handling disconnect:', err);
+      }
+      
+      // Clean up legacy in-memory tracking (can remove after Phase 2)
       if (userSocketsMultiple.has(userId)) {
         userSocketsMultiple.get(userId).delete(socket.id);
-        const remainingSockets = userSocketsMultiple.get(userId).size;
-        console.log(`[OFFLINE] User ${userId} socket disconnected (${socket.id}). Remaining sockets: ${remainingSockets}`);
-
-        if (remainingSockets === 0) {
+        if (userSocketsMultiple.get(userId).size === 0) {
           userSocketsMultiple.delete(userId);
           userSockets.delete(userId);
-          console.log(`[OFFLINE] User ${userId} has NO remaining sockets - setting isOnline to false`);
-
-          try {
-            const db = client.db('discord_clone');
-            
-            // Update user document to mark as offline
-            const updateResult = await db.collection('users').updateOne(
-              { _id: new ObjectId(userId) },
-              { $set: { isOnline: false } }
-            );
-            console.log(`[OFFLINE] User ${userId} isOnline updated to false: ${updateResult.modifiedCount} documents modified`);
-
-            const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
-            if (user && user.friends && user.friends.length > 0) {
-              io.to('status-updates').emit('user-offline', {
-                userId: userId,
-                username: user.username,
-              });
-            }
-          } catch (err) {
-            console.error('[OFFLINE] Error handling disconnect:', err);
-          }
-
-          const serverIds = socket.data?.serverIds || [];
-          serverIds.forEach(sid => {
-            socket.to(`server-presence:${sid}`).emit('member-offline', { userId });
-          });
-        } else {
-          console.log(`[OFFLINE] User ${userId} still has ${remainingSockets} socket(s) - keeping online`);
         }
-      } else {
-        userSockets.delete(userId);
-        console.log(`[OFFLINE] User ${userId} disconnected (not in userSocketsMultiple)`);
       }
     }
 
@@ -310,6 +423,84 @@ io.on('connection', async (socket) => {
   });
 
 });
+
+// ========== PHASE 1.2: Health Check Heartbeat (Detect Stale Connections) ==========
+// Every 30 seconds, verify all socketSessions are still valid by updating their heartbeat
+async function startHealthCheckHeartbeat() {
+  setInterval(async () => {
+    try {
+      const db = client.db('discord_clone');
+      const now = new Date().toISOString();
+      
+      // Find all active socket sessions
+      const activeSessions = await db.collection('socketSessions')
+        .find({})
+        .toArray();
+      
+      if (activeSessions.length === 0) {
+        console.log('[HEARTBEAT] No active sessions to check');
+        return;
+      }
+      
+      console.log(`[HEARTBEAT] Checking ${activeSessions.length} active session(s)`);
+      
+      // For each session, verify the socket is still connected
+      for (const session of activeSessions) {
+        const socketsForUser = Array.from(io.of('/').sockets.values())
+          .filter(s => s.handshake?.auth?.userId === session.userId.toString() && s.id === session.socketId);
+        
+        if (socketsForUser.length === 0) {
+          // Socket is dead - clean up the session
+          console.log(`[HEARTBEAT] Socket ${session.socketId} not found for user ${session.userId} - removing stale session`);
+          await db.collection('socketSessions').deleteOne({
+            _id: session._id
+          });
+        } else {
+          // Socket is alive - update heartbeat timestamp
+          await db.collection('socketSessions').updateOne(
+            { _id: session._id },
+            { $set: { lastHeartbeat: now } }
+          );
+        }
+      }
+      
+      console.log('[HEARTBEAT] Health check complete');
+    } catch (err) {
+      console.error('[HEARTBEAT] Error during health check:', err);
+    }
+  }, 30000); // Every 30 seconds
+  
+  console.log('[HEARTBEAT] Health check monitor started (30s interval)');
+}
+
+// Backend ping emitter: send ping to all connected clients every 30s
+function startBackendPingEmitter() {
+  setInterval(() => {
+    try {
+      const connectedClients = io.of('/').sockets.sockets;
+      let pingCount = 0;
+      
+      for (const [socketId, socket] of connectedClients) {
+        socket.emit('ping');
+        pingCount++;
+      }
+      
+      if (pingCount > 0) {
+        console.log(`[HEARTBEAT] Sent ping to ${pingCount} connected client(s)`);
+      }
+    } catch (err) {
+      console.error('[HEARTBEAT] Error sending pings:', err);
+    }
+  }, 30000); // Every 30 seconds
+  
+  console.log('[HEARTBEAT] Backend ping emitter started (30s interval)');
+}
+
+// Start health check and ping emitter after initialization
+setTimeout(() => {
+  startHealthCheckHeartbeat();
+  startBackendPingEmitter();
+}, 2000);
 
 // Export io instance and userSockets mapping for use in controllers
 socketManager.setSocketIO(io, userSocketsMultiple, voiceRooms);

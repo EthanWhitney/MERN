@@ -420,7 +420,7 @@ const joinViaInvite = async (req, res) => {
     }
 
     // Notify other users that a new member joined
-    socketManager.broadcastMemberJoinedServer(serverId.toString(), {
+    await socketManager.broadcastMemberJoinedServer(db, serverId, {
       userId: userId,
       username: user.username,
       profilePicture: user.profilePicture,

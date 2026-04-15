@@ -73,7 +73,7 @@ const joinServer = async (req, res) => {
     ]);
 
     // Notify other users that a new member joined
-    socketManager.broadcastMemberJoinedServer(serverId, {
+    await socketManager.broadcastMemberJoinedServer(db, new ObjectId(serverId), {
       userId: userId,
       username: user.username,
       profilePicture: user.profilePicture,
@@ -123,7 +123,7 @@ const leaveServer = async (req, res) => {
     ]);
 
     // Notify other users that a member left
-    socketManager.broadcastMemberLeftServer(serverId, userId);
+    await socketManager.broadcastMemberLeftServer(db, serverObjId, userObjId);
 
     return res.status(200).json({ message: 'Left server successfully', error: '' });
   } catch (e) {
