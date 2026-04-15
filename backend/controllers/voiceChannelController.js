@@ -225,7 +225,12 @@ const joinVoiceChannel = async (req, res) => {
     });
 
     let isSwapping = false;
+    let isSwappingAcrossServers = false;
+    let oldServerId = null;
+    let oldChannelId = null;
+
     if (currentChannelWithUser) {
+      // Same-server swap
       isSwapping = true;
       // Remove user from any other voice channel in this server
       await db.collection('voiceChannels').updateMany(
@@ -243,11 +248,41 @@ const joinVoiceChannel = async (req, res) => {
         user
       );
     } else {
-      // User is not in any channel, just remove from all to be safe
-      await db.collection('voiceChannels').updateMany(
-        { serverId: serverObjId },
-        { $pull: { activeMembers: userObjId } }
-      );
+      // Check if user is in a voice channel in a DIFFERENT server (cross-server swap)
+      const oldChannelAnyServer = await db.collection('voiceChannels').findOne({
+        activeMembers: userObjId,
+        _id: { $ne: channelObjId }
+      });
+
+      if (oldChannelAnyServer && oldChannelAnyServer.serverId.toString() !== serverObjId.toString()) {
+        // Cross-server swap detected
+        isSwappingAcrossServers = true;
+        oldServerId = oldChannelAnyServer.serverId;
+        oldChannelId = oldChannelAnyServer._id;
+
+        console.log(`[joinVoiceChannel] Cross-server swap detected: user ${userId} from server ${oldServerId} channel ${oldChannelId} to server ${serverId} channel ${channelId}`);
+
+        // Remove user from old channel
+        await db.collection('voiceChannels').updateOne(
+          { _id: oldChannelId },
+          { $pull: { activeMembers: userObjId } }
+        );
+
+        // Broadcast user left event to the OLD server
+        await broadcastUserLeftVoiceChannel(
+          db,
+          oldServerId,
+          oldChannelId,
+          userObjId,
+          user
+        );
+      } else if (!oldChannelAnyServer) {
+        // User is not in any channel, just remove from all to be safe
+        await db.collection('voiceChannels').updateMany(
+          { serverId: serverObjId },
+          { $pull: { activeMembers: userObjId } }
+        );
+      }
     }
 
     // Add user to this channel
@@ -256,8 +291,20 @@ const joinVoiceChannel = async (req, res) => {
       { $addToSet: { activeMembers: userObjId } }
     );
 
-    // Broadcast join event only if not swapping (swap event already covers the transition)
-    if (!isSwapping) {
+    // Broadcast appropriate event to NEW server
+    if (isSwapping) {
+      // Same-server swap already broadcasted via broadcastUserSwappedVoiceChannel
+    } else if (isSwappingAcrossServers) {
+      // Cross-server swap: broadcast joined event to new server
+      await broadcastUserJoinedVoiceChannel(
+        db,
+        serverObjId,
+        channelObjId,
+        userObjId,
+        user
+      );
+    } else {
+      // Regular join
       await broadcastUserJoinedVoiceChannel(
         db,
         serverObjId,

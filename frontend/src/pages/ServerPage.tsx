@@ -135,6 +135,12 @@ const ServerPage = () => {
     return server.ownerId === currentUserId;
   }, [server, currentUserId]);
 
+  // Get current user's profile from server members
+  const currentUserProfile = useMemo(() => {
+    if (!currentUserId || !members || members.length === 0) return undefined;
+    return members.find(m => m.userId === currentUserId);
+  }, [currentUserId, members]);
+
   // Wrapper for joining voice channel - handles audio connection and backend notification
   const joinVoiceChannel = useCallback(async (targetServerId: string, targetChannelId: string, targetChannelName: string) => {
     console.log('[ServerPage] Joining voice channel:', targetServerId, targetChannelId);
@@ -807,6 +813,7 @@ const ServerPage = () => {
           channelName={activeVoiceChannel.channelName}
           onLeave={leaveVoiceChannel}
           serverProfiles={members}
+          currentUserProfile={currentUserProfile}
         />
       )}
 
