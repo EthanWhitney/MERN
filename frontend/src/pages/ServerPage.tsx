@@ -32,11 +32,15 @@ import {
   onUserLeftVoiceChannel,
   offUserLeftVoiceChannel,
 } from '../services/socketService';
+import { useVoiceChannel } from '../context/VoiceChannelContext';
+import { useAudioConnection } from '../context/AudioConnectionContext';
 import { VoiceChannel } from '../components/VoiceChannel';
 
 const ServerPage = () => {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
   const navigate = useNavigate();
+  const { activeVoiceChannel, joinVoiceChannel: contextJoinVoiceChannel, leaveVoiceChannel: contextLeaveVoiceChannel, swapVoiceChannel: contextSwapVoiceChannel } = useVoiceChannel();
+  const { initiateAudioConnection, disconnectAudio } = useAudioConnection();
   const [server, setServer] = useState<Server | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,7 +53,6 @@ const ServerPage = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showInviteLinksPanel, setShowInviteLinksPanel] = useState(false);
   const [showServerMenu, setShowServerMenu] = useState(false);
-  const [activeVoiceChannel, setActiveVoiceChannel] = useState<{id: string, name: string} | null>(null);
   const [showCreateVoiceModal, setShowCreateVoiceModal] = useState(false);
   const [newVoiceChannelName, setNewVoiceChannelName] = useState('');
   const [isCreatingVoice, setIsCreatingVoice] = useState(false);
@@ -57,6 +60,10 @@ const ServerPage = () => {
 
   // Use the server members hook for real-time member updates
   const { members, onlineUserIds } = useServerMembers(serverId);
+
+  // Determine if we should show voice channel for this server
+  // Only show if the active voice channel is for this specific server
+  const shouldShowVoiceChannel = activeVoiceChannel?.serverId === serverId;
 
   const handleCreateVoiceChannel = async () => {
     if (!newVoiceChannelName.trim() || !serverId) return;
@@ -127,6 +134,86 @@ const ServerPage = () => {
     if (!server || !currentUserId) return false;
     return server.ownerId === currentUserId;
   }, [server, currentUserId]);
+
+  // Wrapper for joining voice channel - handles audio connection and backend notification
+  const joinVoiceChannel = useCallback(async (targetServerId: string, targetChannelId: string, targetChannelName: string) => {
+    console.log('[ServerPage] Joining voice channel:', targetServerId, targetChannelId);
+    
+    // Notify backend
+    try {
+      await authFetch(`/api/servers/${targetServerId}/voiceChannels/${targetChannelId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId }),
+      });
+    } catch (error) {
+      console.error('Failed to notify backend of voice channel join:', error);
+    }
+
+    // Initiate audio connection
+    try {
+      await initiateAudioConnection(targetChannelId, currentUserId);
+    } catch (error) {
+      console.error('Failed to initiate audio connection:', error);
+    }
+
+    // Update context
+    contextJoinVoiceChannel(targetServerId, targetChannelId, targetChannelName);
+  }, [currentUserId, initiateAudioConnection, contextJoinVoiceChannel]);
+
+  // Wrapper for swapping voice channels
+  const swapVoiceChannel = useCallback(async (targetServerId: string, targetChannelId: string, targetChannelName: string) => {
+    console.log('[ServerPage] Swapping voice channel to:', targetServerId, targetChannelId);
+    
+    // Notify backend (backend will detect this is a swap based on the user being in another channel)
+    try {
+      await authFetch(`/api/servers/${targetServerId}/voiceChannels/${targetChannelId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId }),
+      });
+    } catch (error) {
+      console.error('Failed to notify backend of voice channel swap:', error);
+    }
+
+    // Update audio connection to new channel
+    try {
+      await initiateAudioConnection(targetChannelId, currentUserId);
+    } catch (error) {
+      console.error('Failed to swap audio connection:', error);
+    }
+
+    // Update context
+    contextSwapVoiceChannel(targetServerId, targetChannelId, targetChannelName);
+  }, [currentUserId, initiateAudioConnection, contextSwapVoiceChannel]);
+
+  // Wrapper for leaving voice channel
+  const leaveVoiceChannel = useCallback(async () => {
+    console.log('[ServerPage] Leaving voice channel');
+    
+    if (!activeVoiceChannel) return;
+
+    // Notify backend
+    try {
+      await authFetch(`/api/servers/${activeVoiceChannel.serverId}/voiceChannels/${activeVoiceChannel.channelId}/leave`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId }),
+      });
+    } catch (error) {
+      console.error('Failed to notify backend of voice channel leave:', error);
+    }
+
+    // Disconnect audio
+    try {
+      await disconnectAudio();
+    } catch (error) {
+      console.error('Failed to disconnect audio:', error);
+    }
+
+    // Update context
+    contextLeaveVoiceChannel();
+  }, [activeVoiceChannel, currentUserId, disconnectAudio, contextLeaveVoiceChannel]);
 
   useEffect(() => {
     if (serverId) {
@@ -649,10 +736,15 @@ const ServerPage = () => {
                 return (
                   <div
                     key={channel._id}
-                    className={`channel-item voice-channel ${activeVoiceChannel?.id === channel._id ? 'active' : ''}`}
+                    className={`channel-item voice-channel ${activeVoiceChannel?.channelId === channel._id ? 'active' : ''}`}
                     onClick={() => {
                       console.log('Voice channel clicked:', channel._id, channel.name);
-                      setActiveVoiceChannel({ id: channel._id, name: channel.name });
+                      // If already in a voice channel in a different server, swap channels
+                      if (activeVoiceChannel && activeVoiceChannel.serverId !== serverId) {
+                        swapVoiceChannel(serverId!, channel._id, channel.channelName || channel.name);
+                      } else {
+                        joinVoiceChannel(serverId!, channel._id, channel.channelName || channel.name);
+                      }
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
@@ -710,13 +802,10 @@ const ServerPage = () => {
         </div>
       </div>
 
-      {activeVoiceChannel && (
+      {shouldShowVoiceChannel && activeVoiceChannel && (
         <VoiceChannel
-          serverId={serverId!}
-          channelId={activeVoiceChannel.id}
-          channelName={activeVoiceChannel.name}
-          currentUserId={currentUserId}
-          onLeave={() => setActiveVoiceChannel(null)}
+          channelName={activeVoiceChannel.channelName}
+          onLeave={leaveVoiceChannel}
           serverProfiles={members}
         />
       )}

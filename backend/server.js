@@ -328,27 +328,28 @@ io.on('connection', async (socket) => {
         existingPeers.push({ socketId: sid, userId: uid, username: uname });
       }
     });
-    socket.emit('existing-peers', { peers: existingPeers });
+    socket.emit('existing-peers', { peers: existingPeers, channelId });
 
     socket.to(channelId).emit('user-joined', {
       socketId: socket.id,
       userId: vUserId,
-      username: vUsername
+      username: vUsername,
+      channelId
     });
 
     console.log(`[voice] ${vUserId} (${vUsername}) joined channel ${channelId}`);
   });
   
-  socket.on('offer', ({ to, offer, userId: oUserId }) => {
-    io.to(to).emit('offer', { from: socket.id, userId: oUserId, offer });
+  socket.on('offer', ({ to, offer, userId: oUserId, channelId }) => {
+    io.to(to).emit('offer', { from: socket.id, userId: oUserId, offer, channelId });
   });
  
-  socket.on('answer', ({ to, answer }) => {
-    io.to(to).emit('answer', { from: socket.id, answer });
+  socket.on('answer', ({ to, answer, channelId }) => {
+    io.to(to).emit('answer', { from: socket.id, answer, channelId });
   });
  
-  socket.on('ice-candidate', ({ to, candidate }) => {
-    io.to(to).emit('ice-candidate', { from: socket.id, candidate });
+  socket.on('ice-candidate', ({ to, candidate, channelId }) => {
+    io.to(to).emit('ice-candidate', { from: socket.id, candidate, channelId });
   });
  
   socket.on('leave-voice', ({ channelId, userId: vUserId }) => {
@@ -357,7 +358,7 @@ io.on('connection', async (socket) => {
       voiceRooms[channelId].delete(socket.id);
       if (voiceRooms[channelId].size === 0) delete voiceRooms[channelId];
     }
-    io.to(channelId).emit('user-left', { socketId: socket.id, userId: vUserId });
+    io.to(channelId).emit('user-left', { socketId: socket.id, userId: vUserId, channelId });
     console.log(`[voice] ${vUserId} left channel ${channelId}`);
   });
  

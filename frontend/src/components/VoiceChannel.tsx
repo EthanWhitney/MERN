@@ -1,68 +1,28 @@
-import React, { useEffect, useRef } from 'react';
-import { useVoice } from '../hooks/useVoice';
-import { authFetch } from '../utils/authFetch';
+import React, { useRef } from 'react';
+import { useAudioConnection } from '../context/AudioConnectionContext';
 
 const AudioPlayer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  useEffect(() => {
+  React.useEffect(() => {
     if (audioRef.current) audioRef.current.srcObject = stream;
   }, [stream]);
   return <audio ref={audioRef} autoPlay playsInline />;
 };
 
 interface VoiceChannelProps {
-  serverId: string;
-  channelId: string;
   channelName: string;
-  currentUserId: string;
   onLeave: () => void;
   serverProfiles?: any[];
 }
 
 export const VoiceChannel: React.FC<VoiceChannelProps> = ({
-  serverId,
-  channelId,
   channelName,
-  currentUserId,
   onLeave,
   serverProfiles = [],
 }) => {
-  const { remoteStreams, remoteUsers } = useVoice(channelId, currentUserId);
+  const { remoteStreams, remoteUsers } = useAudioConnection();
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
   const myUsername = userData.username || 'Me';
-
-  // Notify backend when joining/leaving voice channel
-  useEffect(() => {
-    const joinVoiceChannel = async () => {
-      try {
-        await authFetch(`/api/servers/${serverId}/voiceChannels/${channelId}/join`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUserId }),
-        });
-      } catch (error) {
-        console.error('Failed to join voice channel:', error);
-      }
-    };
-
-    const leaveVoiceChannel = async () => {
-      try {
-        await authFetch(`/api/servers/${serverId}/voiceChannels/${channelId}/leave`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: currentUserId }),
-        });
-      } catch (error) {
-        console.error('Failed to leave voice channel:', error);
-      }
-    };
-
-    joinVoiceChannel();
-
-    return () => {
-      leaveVoiceChannel();
-    };
-  }, [serverId, channelId, currentUserId]);
 
   return (
     <div style={{
@@ -78,7 +38,7 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
           </span>
         </div>
         <button
-          onClick={() => { onLeave(); }}
+          onClick={onLeave}
           title="Disconnect"
           style={{
             background: 'none', border: 'none', color: '#ed4245',
