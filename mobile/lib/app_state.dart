@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/api_service.dart';
 import 'package:mobile/models/server_model.dart';
 import 'package:mobile/models/friend_model.dart';

@@ -1,22 +1,17 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'package:mobile/app_config.dart';
 
 class ApiService {
   static final http.Client _client = http.Client();
 
-  static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:5000';
-    if (Platform.isAndroid) return 'http://10.0.2.2:5000';
-    return 'http://localhost:5000';
-  }
+  static String get baseUrl => AppConfig.baseUrl;
 
-  static String buildPath(String path) {
-    final clean = path.startsWith('/') ? path.substring(1) : path;
-    return '$baseUrl/$clean';
-  }
+  static String buildPath(String path) => AppConfig.buildPath(path);
+
+  
 
   static Future<Map<String, String>> _authHeaders() async {
     final prefs = await SharedPreferences.getInstance();

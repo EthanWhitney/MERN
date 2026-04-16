@@ -68,12 +68,30 @@ class HomeDialogs {
       builder: (ctx) => AlertDialog(
         title: const Text("Logout?"),
         actions: [
-          TextButton(onPressed: () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.clear();
-            socket.disconnect();
-            if (context.mounted) Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginPage()), (r) => false);
-          }, child: const Text("Logout", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () async {
+              // 1. Disconnect socket first so the server marks the user offline
+              socket.disconnect();
+
+              // 2. Wipe stored tokens and user data
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+
+              // 3. Reset all in-memory app state so the next login starts clean
+              if (context.mounted) {
+                context.read<SyncordAppState>().reset();
+              }
+
+              // 4. Navigate to login, clearing the entire back-stack
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (r) => false,
+                );
+              }
+            },
+            child: const Text("Logout", style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );

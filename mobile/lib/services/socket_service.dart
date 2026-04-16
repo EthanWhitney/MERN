@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:mobile/api_service.dart';
+import 'package:mobile/app_config.dart';
 
 typedef MessageCallback = void Function(Map<String, dynamic> data);
 typedef SimpleCallback = void Function(Map<String, dynamic> data);
@@ -20,8 +20,8 @@ class SocketService {
 
   bool get isConnected => _connected;
 
-  // Called once the socket successfully connects (or reconnects)
-  VoidCallback? onConnected;
+  // Stored so it can be re-fired on every reconnect, not just the first connect
+  VoidCallback? _onConnected;
 
   void connect(
     String userId, {
@@ -32,11 +32,19 @@ class SocketService {
     SimpleCallback? onUserOffline,
     VoidCallback? onConnected,
   }) {
-    this.onConnected = onConnected;
+    _onConnected = onConnected;
+
+    // If a live socket already exists for this user, do nothing
     if (_socket != null && _connected) return;
 
+    // If a dead socket exists (e.g. after a failed previous attempt), destroy it
+    if (_socket != null) {
+      _socket!.dispose();
+      _socket = null;
+    }
+
     _socket = IO.io(
-      ApiService.baseUrl,
+      AppConfig.socketUrl,
       IO.OptionBuilder()
           .setTransports(['websocket', 'polling'])
           .disableAutoConnect()
@@ -52,11 +60,12 @@ class SocketService {
     _socket!.onConnect((_) {
       _connected = true;
       debugPrint('[Socket] Connected');
-      // Re-join any active rooms after connect / reconnect
+      // Re-join any rooms that were active before this connect/reconnect
       _rejoinActiveRooms();
-      // Notify caller so they can re-join rooms that weren't yet known
-      // when connect() was first called (e.g. friends loaded after connect)
-      onConnected?.call();
+      // Always fire onConnected so HomePage can re-join DM rooms for the
+      // current friend list — this matters on first connect AND after
+      // any network drop/reconnect
+      _onConnected?.call();
     });
 
     _socket!.on('receive-message', (data) {
@@ -102,17 +111,12 @@ class SocketService {
       _connected = false;
       debugPrint('[Socket] Connect error: $e');
     });
-    _socket!.on('reconnect', (_) {
-      debugPrint('[Socket] Reconnected');
-      _rejoinActiveRooms();
-    });
   }
 
   // ---------------------------------------------------------------------------
   // Room management
   // ---------------------------------------------------------------------------
 
-  /// Join a DM room. Remembers the room so it is re-joined on reconnect.
   void joinDM(String recipientId) {
     _activeDMRecipientId = recipientId;
     _activeServerId = null;
@@ -125,15 +129,11 @@ class SocketService {
     _activeDMRecipientId = null;
   }
 
-  /// Join a DM room without marking it as the "active" room.
-  /// Used to subscribe to all friend rooms on startup so messages arrive
-  /// even when no ChatPage is open (e.g. incoming invite cards).
   void joinDMPassive(String recipientId) {
     _passiveDMRooms.add(recipientId);
     _emitIfConnected('join-dm', recipientId);
   }
 
-  /// Join a server text channel room. Remembers it for reconnect.
   void joinServerChannel(String serverId, String channelId) {
     _activeServerId = serverId;
     _activeChannelId = channelId;
@@ -152,14 +152,11 @@ class SocketService {
         'leave-server-channel', {'serverId': serverId, 'channelId': channelId});
   }
 
-  /// Re-emit join for whatever room was active before a disconnect.
   void _rejoinActiveRooms() {
-    // Rejoin all passive DM rooms (for background message delivery)
     for (final id in _passiveDMRooms) {
       debugPrint('[Socket] Rejoining passive DM: $id');
       _socket?.emit('join-dm', id);
     }
-    // Rejoin the active room (open ChatPage)
     if (_activeDMRecipientId != null) {
       debugPrint('[Socket] Rejoining active DM: $_activeDMRecipientId');
       _socket?.emit('join-dm', _activeDMRecipientId);
@@ -219,26 +216,27 @@ class SocketService {
   }
 
   // ---------------------------------------------------------------------------
-  // Disconnect
+  // Disconnect / cleanup
   // ---------------------------------------------------------------------------
 
   void disconnect() {
     _socket?.disconnect();
+    _socket?.dispose();
     _socket = null;
     _connected = false;
+    _onConnected = null;
     _activeDMRecipientId = null;
     _activeServerId = null;
     _activeChannelId = null;
     _passiveDMRooms.clear();
     _messageCallbacks.clear();
+    _voiceListeners.clear();
   }
 
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 
-  /// Emit immediately if connected; the room will be re-joined on next
-  /// connect via _rejoinActiveRooms if we're currently disconnected.
   void _emitIfConnected(String event, dynamic data) {
     if (_connected && _socket != null) {
       _socket!.emit(event, data);
