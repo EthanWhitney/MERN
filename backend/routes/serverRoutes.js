@@ -79,12 +79,12 @@ router.patch('/:serverId/roles/:roleId', updateRole);
 router.delete('/:serverId/roles/:roleId', deleteRole);
 
 // voice channels
-router.post('/:serverId/voiceChannels', createVoiceChannel);
-router.get('/:serverId/voiceChannels', getVoiceChannels);
-router.patch('/:serverId/voiceChannels/:channelId', updateVoiceChannel);
-router.delete('/:serverId/voiceChannels/:channelId', deleteVoiceChannel);
-router.post('/:serverId/voiceChannels/:channelId/join', joinVoiceChannel);
-router.delete('/:serverId/voiceChannels/:channelId/leave', leaveVoiceChannel);
+router.post('/:serverId/voiceChannels', verifyToken, createVoiceChannel);
+router.get('/:serverId/voiceChannels', verifyToken, getVoiceChannels);
+router.patch('/:serverId/voiceChannels/:channelId', verifyToken, updateVoiceChannel);
+router.delete('/:serverId/voiceChannels/:channelId', verifyToken, deleteVoiceChannel);
+router.post('/:serverId/voiceChannels/:channelId/join', verifyToken, joinVoiceChannel);
+router.delete('/:serverId/voiceChannels/:channelId/leave', verifyToken, leaveVoiceChannel);
 
 // text channels crud
 router.post('/:serverId/textChannels', createTextChannel);

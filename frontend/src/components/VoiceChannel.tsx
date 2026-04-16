@@ -1,52 +1,32 @@
-import React, { useEffect, useRef } from 'react';
-import { useVoice } from '../hooks/useVoice';
+import React, { useRef } from 'react';
+import { useAudioConnection } from '../context/AudioConnectionContext';
 
-const AudioPlayer: React.FC<{ stream: MediaStream; isMuted?: boolean }> = ({ stream, isMuted = false }) => {
+const AudioPlayer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.srcObject = stream;
-      // Mute audio element if local user is deafened
-      audioRef.current.muted = isMuted;
-    }
-  }, [stream, isMuted]);
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
-    }
-  }, [isMuted]);
+  React.useEffect(() => {
+    if (audioRef.current) audioRef.current.srcObject = stream;
+  }, [stream]);
   return <audio ref={audioRef} autoPlay playsInline />;
 };
 
 interface VoiceChannelProps {
-  channelId: string;
   channelName: string;
-  currentUserId: string;
   onLeave: () => void;
   serverProfiles?: any[];
+  currentUserProfile?: any;
 }
 
 export const VoiceChannel: React.FC<VoiceChannelProps> = ({
-  channelId,
   channelName,
-  currentUserId,
   onLeave,
   serverProfiles = [],
+  currentUserProfile,
 }) => {
-  const { remoteStreams, remoteUsers, isMuted, isDeafened } = useVoice(channelId, currentUserId);
+  const { remoteStreams, remoteUsers } = useAudioConnection();
   const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-  const myUsername = userData.username || 'Me';
-
-  // Helper to render status badge
-  const renderStatusBadge = (muted?: boolean, deafened?: boolean) => {
-    if (deafened) {
-      return <span style={{ fontSize: '12px' }} title="Deafened">🔈</span>;
-    }
-    if (muted) {
-      return <span style={{ fontSize: '12px' }} title="Muted">🔇</span>;
-    }
-    return null;
-  };
+  
+  // Use server-specific profile if available, otherwise fall back to user data
+  const displayName = currentUserProfile?.serverSpecificName || currentUserProfile?.username || userData.username || 'Me';
 
   return (
     <div style={{
@@ -62,7 +42,7 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
           </span>
         </div>
         <button
-          onClick={() => { onLeave(); }}
+          onClick={onLeave}
           title="Disconnect"
           style={{
             background: 'none', border: 'none', color: '#ed4245',
@@ -83,27 +63,13 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
         {/* Self */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px', borderRadius: '4px' }}>
           <div style={{
-            position: 'relative',
             width: '28px', height: '28px', borderRadius: '50%',
             background: '#5865f2', display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
           }}>
-            {myUsername[0]?.toUpperCase() || '?'}
-            {/* Status badge - bottom right corner */}
-            {renderStatusBadge(isMuted, isDeafened) && (
-              <div style={{
-                position: 'absolute',
-                bottom: '-2px',
-                right: '-2px',
-                background: '#232428',
-                borderRadius: '50%',
-                padding: '1px',
-              }}>
-                {renderStatusBadge(isMuted, isDeafened)}
-              </div>
-            )}
+            {displayName[0]?.toUpperCase() || '?'}
           </div>
-          <span style={{ color: '#dbdee1', fontSize: '13px' }}>{myUsername}</span>
+          <span style={{ color: '#dbdee1', fontSize: '13px' }}>{displayName}</span>
           <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
         </div>
 
@@ -112,39 +78,28 @@ export const VoiceChannel: React.FC<VoiceChannelProps> = ({
           const remoteUser = remoteUsers[socketId];
           const userId = remoteUser?.userId;
           const socketUsername = remoteUser?.username;
-          const remoteMuted = remoteUser?.isMuted;
-          const remoteDeafened = remoteUser?.isDeafened;
           
-          const profile = serverProfiles.find(p => p.userId === userId);
+          // Find profile by userId, comparing as strings to handle ObjectId vs string comparison
+          const profile = serverProfiles.find(p => {
+            const pUserId = typeof p.userId === 'object' ? (p.userId as any).toString() : String(p.userId);
+            const uId = typeof userId === 'object' ? (userId as any).toString() : String(userId);
+            return pUserId === uId;
+          });
 
           const name = profile?.serverSpecificName || profile?.username || socketUsername || 'Unknown';
           
           return (
             <div key={socketId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
               <div style={{
-                position: 'relative',
                 width: '28px', height: '28px', borderRadius: '50%',
                 background: '#4e5058', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', color: 'white',
               }}>
                 {name[0]?.toUpperCase() || '?'}
-                {/* Status badge - bottom right corner */}
-                {renderStatusBadge(remoteMuted, remoteDeafened) && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-2px',
-                    right: '-2px',
-                    background: '#232428',
-                    borderRadius: '50%',
-                    padding: '1px',
-                  }}>
-                    {renderStatusBadge(remoteMuted, remoteDeafened)}
-                  </div>
-                )}
               </div>
               <span style={{ color: '#dbdee1', fontSize: '13px' }}>{name}</span>
               <span style={{ marginLeft: 'auto', fontSize: '14px' }}>🎤</span>
-              <AudioPlayer stream={stream} isMuted={isDeafened} />
+              <AudioPlayer stream={stream} />
             </div>
           );
         })}

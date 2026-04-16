@@ -6,4 +6,7 @@ const profileController = require('../controllers/profileController');
 // POST /api/profile/updateProfilePicture
 router.post('/updateProfilePicture', verifyToken, profileController.updateProfilePicture);
 
+// POST /api/profile/migrateAvatarFormats
+router.post('/migrateAvatarFormats', profileController.migrateAvatarFormats);
+
 module.exports = router;

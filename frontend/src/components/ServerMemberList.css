@@ -147,6 +147,32 @@
   color: #4a5568;
 }
 
+/* Voice state badges */
+.member-voice-badges {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.voice-badge {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  transition: opacity 150ms ease;
+}
+
+.member-row:hover .voice-badge {
+  opacity: 1;
+}
+
+.voice-badge.muted {
+  cursor: help;
+}
+
+.voice-badge.deafened {
+  cursor: help;
+}
+
 /* Responsive — hide on narrow screens */
 @media (max-width: 1100px) {
   .member-list {

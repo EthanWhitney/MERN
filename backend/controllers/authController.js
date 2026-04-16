@@ -5,6 +5,7 @@ const jwtManager = require('../createJWT');
 const { generateVerificationCode } = require('../utils/codeGenerator');
 const sgMail = require('@sendgrid/mail');
 const { getVerificationCodeEmailTemplate, getVerificationCodeEmailTextTemplate, getPasswordResetEmailTemplate, getPasswordResetEmailTextTemplate } = require('../utils/emailTemplates');
+const socketManager = require('../utils/socketManager');
 
 require('dotenv').config();
 
@@ -601,6 +602,9 @@ const deleteAccount = async (req, res) => {
 
     // 9. Delete the user account
     await db.collection('users').deleteOne({ _id: userObjId });
+
+    // 10. Broadcast user account deleted to all their friends and server members
+    await socketManager.broadcastUserAccountDeleted(db, userId);
 
     return res.status(200).json({ success: true, error: '' });
   } catch (e) {

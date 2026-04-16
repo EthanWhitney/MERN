@@ -792,6 +792,56 @@ const getDirectConversations = async (req, res) => {
 	}
 };
 
+const getLastMessageActivity = async (req, res) => {
+	const { friendIds } = req.body;
+	const { userId } = req;
+
+	if (!userId || !ObjectId.isValid(userId)) {
+		return res.status(401).json({ activity: {}, error: 'Valid userId is required' });
+	}
+
+	if (!Array.isArray(friendIds) || friendIds.length === 0) {
+		return res.status(400).json({ activity: {}, error: 'friendIds must be a non-empty array' });
+	}
+
+	if (!friendIds.every((id) => ObjectId.isValid(id))) {
+		return res.status(400).json({ activity: {}, error: 'Invalid friend IDs' });
+	}
+
+	try {
+		const db = client.db('discord_clone');
+		await ensureIndexes(db);
+
+		const userObjId = new ObjectId(userId);
+		const friendObjIds = friendIds.map((id) => new ObjectId(id));
+		const activity = {};
+
+		const results = await Promise.all(
+			friendObjIds.map(async (friendId) => {
+				const conversationKey = makeConversationKey(userObjId, friendId);
+				const query = { conversationKey };
+
+				const latestMessage = await db
+					.collection('directMessages')
+					.findOne(query, { sort: { createdAt: -1 } });
+
+				return {
+					friendId: friendId.toString(),
+					lastActivityTime: latestMessage ? latestMessage.createdAt.toISOString() : null,
+				};
+			})
+		);
+
+		results.forEach(({ friendId, lastActivityTime }) => {
+			activity[friendId] = lastActivityTime;
+		});
+
+		return res.status(200).json({ activity, error: '' });
+	} catch (e) {
+		return res.status(500).json({ activity: {}, error: e.toString() });
+	}
+};
+
 module.exports = {
 	sendMessage,
 	getMessages,
@@ -802,4 +852,5 @@ module.exports = {
 	updateDirectMessage,
 	deleteDirectMessage,
 	getDirectConversations,
+	getLastMessageActivity,
 };

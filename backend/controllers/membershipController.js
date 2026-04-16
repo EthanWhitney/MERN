@@ -73,7 +73,7 @@ const joinServer = async (req, res) => {
     ]);
 
     // Notify other users that a new member joined
-    socketManager.broadcastMemberJoinedServer(serverId, {
+    await socketManager.broadcastMemberJoinedServer(db, new ObjectId(serverId), {
       userId: userId,
       username: user.username,
       profilePicture: user.profilePicture,
@@ -123,7 +123,7 @@ const leaveServer = async (req, res) => {
     ]);
 
     // Notify other users that a member left
-    socketManager.broadcastMemberLeftServer(serverId, userId);
+    await socketManager.broadcastMemberLeftServer(db, serverObjId, userObjId);
 
     return res.status(200).json({ message: 'Left server successfully', error: '' });
   } catch (e) {
@@ -237,7 +237,7 @@ const getOnlineMembers = async (req, res) => {
 
     const memberIds = profiles.map(p => p.userId.toString());
     // Filter to only the ones that have an active socket connection
-    const onlineUserIds = memberIds.filter(id => !!socketManager.getUserSocketId(id));
+    const onlineUserIds = memberIds.filter(id => socketManager.isUserOnline(id));
 
     return res.status(200).json({ onlineUserIds, error: '' });
   } catch (e) {
@@ -300,6 +300,18 @@ const updateServerProfile = async (req, res) => {
     if (!result) {
       error = 'Failed to update server profile';
       return res.status(500).json({ serverProfile: null, error });
+    }
+
+    // ========== PHASE 5.1: Broadcast server profile update ==========
+    // Only broadcast if profile customizations have changed (name/avatar/voice state)
+    const broadcastUpdates = {};
+    if (serverSpecificName !== undefined) broadcastUpdates.serverSpecificName = serverSpecificName;
+    if (serverProfilePicture !== undefined) broadcastUpdates.serverProfilePicture = serverProfilePicture;
+    if (isServerMuted !== undefined) broadcastUpdates.isServerMuted = isServerMuted;
+    if (isServerDeafened !== undefined) broadcastUpdates.isServerDeafened = isServerDeafened;
+    
+    if (Object.keys(broadcastUpdates).length > 0) {
+      await socketManager.broadcastServerProfileUpdated(db, serverId, userId, broadcastUpdates);
     }
 
     return res.status(200).json({ serverProfile: result, error: '' });

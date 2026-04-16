@@ -76,6 +76,9 @@ function Register() {
         placeholder="Email"
         value={email}
         onChange={handleSetEmail}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') doRegister(e);
+        }}
       /><br />
 
       <input
@@ -84,6 +87,9 @@ function Register() {
         placeholder="Username"
         value={username}
         onChange={handleSetUsername}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') doRegister(e);
+        }}
       /><br />
 
       <input
@@ -92,6 +98,9 @@ function Register() {
         placeholder="Password"
         value={password}
         onChange={handleSetPassword}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') doRegister(e);
+        }}
       /><br />
 
       <input

@@ -14,11 +14,15 @@ import {
   offFriendRequestDeclined,
   onFriendRemoved,
   offFriendRemoved,
+  onProfilePictureChanged,
+  offProfilePictureChanged
+} from '../services/socketService';
+import {
   onUserOnline,
   offUserOnline,
   onUserOffline,
-  offUserOffline
-} from '../services/socketService';
+  offUserOffline,
+} from '../services/listenerRegistry';
 
 interface Friend {
   _id: string;
@@ -32,6 +36,11 @@ export interface ChatMessage {
   senderId: string;
   recipientId: string;
   message: string;
+  sender?: {
+    userId?: string;
+    username?: string;
+    profilePicture?: string;
+  };
   createdAt?: string;
   edited?: boolean;
   editedAt?: string;
@@ -54,6 +63,7 @@ export const useFriendsChat = (recipientId?: string) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [oldestMessageTime, setOldestMessageTime] = useState<string | null>(null);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
+  const [lastActivityMap, setLastActivityMap] = useState<{ [friendId: string]: string | null }>({});
 
   const userId = useMemo(() => {
     try {
@@ -122,6 +132,39 @@ export const useFriendsChat = (recipientId?: string) => {
     loadFriends();
   }, [userId]);
 
+  // Load last message activity for all friends
+  useEffect(() => {
+    const loadLastActivity = async () => {
+      if (!userId || friends.length === 0) {
+        setLastActivityMap({});
+        return;
+      }
+
+      try {
+        const friendIds = friends.map((f) => f._id);
+        const response = await authFetch(`api/chat/dms/last-activity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ friendIds }),
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to load last activity');
+          return;
+        }
+
+        const payload = await response.json();
+        if (payload.activity) {
+          setLastActivityMap(payload.activity);
+        }
+      } catch (err: any) {
+        console.error('Error loading last activity:', err);
+      }
+    };
+
+    loadLastActivity();
+  }, [userId, friends]);
+
   // Load pending friend requests
   useEffect(() => {
     const loadPendingRequests = async () => {
@@ -148,6 +191,27 @@ export const useFriendsChat = (recipientId?: string) => {
     loadPendingRequests();
   }, [userId]);
 
+  // Helper function to reload friends list (includes online status)
+  const reloadFriendsList = async () => {
+    if (!userId) return;
+
+    try {
+      const response = await authFetch(`api/users/friends`);
+      if (!response.ok) {
+        console.warn('Failed to reload friends list');
+        return;
+      }
+
+      const payload = await response.json();
+      if (payload.friends) {
+        console.log('[useFriendsChat] Reloaded friends list with updated online status');
+        setFriends(payload.friends);
+      }
+    } catch (err: any) {
+      console.error('Error reloading friends list:', err);
+    }
+  };
+
   // Helper function to reload friends and pending requests
   const reloadFriendsData = async () => {
     try {
@@ -166,6 +230,20 @@ export const useFriendsChat = (recipientId?: string) => {
       console.error('Error reloading friends data:', err);
     }
   };
+
+  // ========== PHASE 3.4: Refresh friends online status on socket connection ==========
+  // When socket connects, refresh the friends list to get updated online status
+  useEffect(() => {
+    if (!userId || friends.length === 0) return;
+
+    // Refresh online status after socket connects
+    const timer = setTimeout(() => {
+      console.log('[useFriendsChat] Refreshing friends online status after socket ready');
+      reloadFriendsList();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [userId]);
 
   // Listen for friend request received notifications
   useEffect(() => {
@@ -284,7 +362,7 @@ export const useFriendsChat = (recipientId?: string) => {
     onUserOnline(handleUserOnline);
 
     return () => {
-      offUserOnline(handleUserOnline);
+      offUserOnline();
     };
   }, [userId, selectedFriend]);
 
@@ -318,7 +396,45 @@ export const useFriendsChat = (recipientId?: string) => {
     onUserOffline(handleUserOffline);
 
     return () => {
-      offUserOffline(handleUserOffline);
+      offUserOffline();
+    };
+  }, [userId, selectedFriend]);
+
+  // Listen for profile picture changes
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+
+    const handleProfilePictureChanged = (data: any) => {
+      const { userId: changedUserId, profilePicture } = data;
+      console.log('[useFriendsChat] Profile picture changed for user:', changedUserId);
+      
+      // Update the friend in the friends array
+      setFriends(prevFriends =>
+        prevFriends.map(friend =>
+          friend._id === changedUserId ? { ...friend, profilePicture } : friend
+        )
+      );
+      
+      // Also update pending requests if this user is there
+      setPendingRequests(prevRequests =>
+        prevRequests.map(request =>
+          request._id === changedUserId ? { ...request, profilePicture } : request
+        )
+      );
+      
+      // If this is the selected friend, update it too
+      if (selectedFriend && selectedFriend._id === changedUserId) {
+        setSelectedFriend({ ...selectedFriend, profilePicture });
+      }
+    };
+
+    // Register listener immediately (no delay)
+    onProfilePictureChanged(handleProfilePictureChanged);
+
+    return () => {
+      offProfilePictureChanged(handleProfilePictureChanged);
     };
   }, [userId, selectedFriend]);
 
@@ -387,6 +503,14 @@ export const useFriendsChat = (recipientId?: string) => {
     const handleReceiveMessage = (incomingMessage: any) => {
       console.log('[useFriendsChat] Received DM message:', incomingMessage);
       setMessages(prevMessages => [...prevMessages, incomingMessage]);
+      
+      // Update last activity for the sender
+      if (incomingMessage.senderId) {
+        setLastActivityMap(prevMap => ({
+          ...prevMap,
+          [incomingMessage.senderId]: new Date().toISOString(),
+        }));
+      }
     };
 
     onReceiveMessage(handleReceiveMessage);
@@ -429,6 +553,12 @@ export const useFriendsChat = (recipientId?: string) => {
         // Emit message via Socket.IO - let the listener handle adding to state
         // to avoid duplicate messages
         sendDMMessage(targetId, newMessage);
+        
+        // Update activity timestamp for the recipient
+        setLastActivityMap(prev => ({
+          ...prev,
+          [targetId]: new Date().toISOString()
+        }));
         
         return true;
       }
@@ -710,5 +840,6 @@ export const useFriendsChat = (recipientId?: string) => {
         setIsLoadingMore(false);
       }
     },
+    lastActivityMap,
   };
 };

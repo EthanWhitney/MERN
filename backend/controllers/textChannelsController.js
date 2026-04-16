@@ -1,4 +1,8 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const {
+  broadcastTextChannelCreated,
+  broadcastTextChannelDeleted,
+} = require('../utils/socketManager');
 
 const url = 'mongodb+srv://ma058102:group4@mern.7inupbn.mongodb.net/?appName=MERN';
 const client = new MongoClient(url);
@@ -92,8 +96,13 @@ const createTextChannel = async (req, res) => {
       { $push: { textChannels: result.insertedId } }
     );
 
+    const createdChannel = { ...newTextChannel, _id: result.insertedId };
+    
+    // Broadcast text channel creation to all server members
+    await broadcastTextChannelCreated(db, serverObjId, createdChannel);
+
     return res.status(201).json({
-      textChannel: { ...newTextChannel, _id: result.insertedId },
+      textChannel: createdChannel,
       error: '',
     });
   } catch (e) {
@@ -214,6 +223,9 @@ const deleteTextChannel = async (req, res) => {
       ),
       db.collection('messages').deleteMany({ serverId: serverObjId, channelId: channelObjId }),
     ]);
+
+    // Broadcast text channel deletion to all server members
+    await broadcastTextChannelDeleted(db, serverObjId, channelObjId);
 
     return res.status(200).json({ message: 'Text channel deleted successfully', error: '' });
   } catch (e) {

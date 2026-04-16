@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { ChatMessage } from '../types/chat';
 import UserProfilePreview from './UserProfilePreview';
+import { formatMessageTimestamp } from '../utils/formatMessageTimestamp';
 
 type MessageListProps = {
   currentUserId: string;
@@ -357,7 +358,7 @@ function MessageList({ currentUserId, messages, onEditMessage, onDeleteMessage, 
                   {getDisplayNameFromCache(message)}
                 </span>
                 <span className="message-time">
-                  {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {formatMessageTimestamp(message.createdAt)}
                 </span>
               </div>
             )}

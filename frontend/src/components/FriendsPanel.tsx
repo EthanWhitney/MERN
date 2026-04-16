@@ -26,6 +26,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
     loading,
     error,
     addFriend,
+    lastActivityMap,
   } = useFriendsChat();
 
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
@@ -42,6 +43,18 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
       setIsAddingFriend(false);
     }
   };
+
+  // Sort friends by most recent activity (newest first)
+  const sortFriendsByActivity = (friendsList: Friend[]): Friend[] => {
+    return [...friendsList].sort((a, b) => {
+      const aTime = lastActivityMap[a._id] ? new Date(lastActivityMap[a._id] as string).getTime() : 0;
+      const bTime = lastActivityMap[b._id] ? new Date(lastActivityMap[b._id] as string).getTime() : 0;
+      return bTime - aTime; // Newest first
+    });
+  };
+
+  const sortedFriends = sortFriendsByActivity(friends);
+  const sortedPendingRequests = sortFriendsByActivity(pendingRequests);
 
   return (
     <div className={`friends-panel ${showChatOnMobile ? 'mobile-hidden' : ''}`}>
@@ -87,7 +100,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
                 Friends
               </h2>
             </div>
-            {friends.map((friend) => (
+            {sortedFriends.map((friend) => (
               <article
                 className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
                 key={friend._id}
@@ -120,7 +133,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
               <>
                 {pendingRequests.length > 0 && (
                   <>
-                    {pendingRequests.map((request) => (
+                    {sortedPendingRequests.map((request) => (
                       <article
                         className="friend-card friend-request-card"
                         key={request._id}
@@ -147,7 +160,7 @@ const FriendsPanel = ({ selectedFriend, onSelectFriend, activeTab, showChatOnMob
                         All Friends
                       </h3>
                     </div>
-                    {friends.map((friend) => (
+                    {sortedFriends.map((friend) => (
                       <article
                         className={`friend-card ${selectedFriend?._id === friend._id ? 'friend-card-active' : ''}`}
                         key={friend._id}

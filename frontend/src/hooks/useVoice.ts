@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocket, initSocket } from '../services/socketService';
 
 interface Peer {
   socketId: string;
   userId: string;
-  username: string;
-  isMuted?: boolean;
-  isDeafened?: boolean;
+  username: string; 
 }
 
 interface OfferPayload {
@@ -25,85 +23,26 @@ interface IceCandidatePayload {
   candidate: RTCIceCandidateInit;
 }
 
-interface RemoteUserState {
-  userId: string;
-  username: string;
-  isMuted?: boolean;
-  isDeafened?: boolean;
-}
-
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-};
-
-// Load persistent mute/deafen state from localStorage
-const loadVoiceSettings = () => {
-  try {
-    const saved = localStorage.getItem('voiceSettings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        isMuted: parsed.isMuted ?? false,
-        isDeafened: parsed.isDeafened ?? false,
-      };
-    }
-  } catch (e) {
-    console.error('Failed to load voice settings:', e);
-  }
-  return { isMuted: false, isDeafened: false };
-};
-
-// Save voice settings to localStorage
-const saveVoiceSettings = (isMuted: boolean, isDeafened: boolean) => {
-  try {
-    localStorage.setItem('voiceSettings', JSON.stringify({ isMuted, isDeafened }));
-  } catch (e) {
-    console.error('Failed to save voice settings:', e);
-  }
 };
 
 export const useVoice = (channelId: string, userId: string) => {
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [isConnected, setIsConnected] = useState<boolean>(false);
   
-  const [remoteUsers, setRemoteUsers] = useState<Record<string, RemoteUserState>>({});
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [isDeafened, setIsDeafened] = useState<boolean>(false);
+  const [remoteUsers, setRemoteUsers] = useState<Record<string, {userId: string, username: string}>>({});
 
   const socketRef = useRef<Socket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const audioTracksRef = useRef<MediaStreamTrack[]>([]);
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
 
   useEffect(() => {
     if (!channelId || !userId) return;
 
-    // Load persistent mute/deafen state
-    const { isMuted: savedIsMuted, isDeafened: savedIsDeafened } = loadVoiceSettings();
-    setIsMuted(savedIsMuted);
-    setIsDeafened(savedIsDeafened);
-
     const initVoice = async () => {
       try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: { 
-            echoCancellation: true, 
-            noiseSuppression: true, 
-            autoGainControl: true 
-          }, 
-          video: false 
-        });
-        
-        localStreamRef.current = mediaStream;
-        audioTracksRef.current = mediaStream.getAudioTracks();
-        
-        // Apply persistent mute/deafen state immediately
-        if (savedIsMuted || savedIsDeafened) {
-          audioTracksRef.current.forEach(track => {
-            track.enabled = !savedIsMuted && !savedIsDeafened;
-          });
-        }
-        
+        localStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         setIsConnected(true);
       } catch (err) {
         console.error("Microphone access denied:", err);
@@ -118,22 +57,10 @@ export const useVoice = (channelId: string, userId: string) => {
       socketRef.current = socket;
 
       if (socket.connected) {
-        socket.emit('join-voice', { 
-          channelId, 
-          userId, 
-          username: myUsername,
-          isMuted: savedIsMuted,
-          isDeafened: savedIsDeafened,
-        });
+        socket.emit('join-voice', { channelId, userId, username: myUsername });
       } else {
         socket.on('connect', () => {
-          socket.emit('join-voice', { 
-            channelId, 
-            userId, 
-            username: myUsername,
-            isMuted: savedIsMuted,
-            isDeafened: savedIsDeafened,
-          });
+          socket.emit('join-voice', { channelId, userId, username: myUsername });
         });
       }
 
@@ -141,7 +68,7 @@ export const useVoice = (channelId: string, userId: string) => {
         if (!localStreamRef.current) return;
         
         for (const peer of peers) {
-          setRemoteUsers(prev => ({ ...prev, [peer.socketId]: { userId: peer.userId, username: peer.username, isMuted: peer.isMuted, isDeafened: peer.isDeafened } }));
+          setRemoteUsers(prev => ({ ...prev, [peer.socketId]: { userId: peer.userId, username: peer.username } }));
           const pc = createPeer(peer.socketId, socket, localStreamRef.current);
           peersRef.current[peer.socketId] = pc;
           
@@ -151,9 +78,9 @@ export const useVoice = (channelId: string, userId: string) => {
         }
       });
 
-      socket.on('user-joined', ({ socketId, userId: remoteUserId, username: remoteUsername, isMuted: remoteIsMuted, isDeafened: remoteIsDeafened }: { socketId: string, userId: string, username: string, isMuted?: boolean, isDeafened?: boolean }) => {
+      socket.on('user-joined', ({ socketId, userId: remoteUserId, username: remoteUsername }: { socketId: string, userId: string, username: string }) => {
         if (!localStreamRef.current) return;
-        setRemoteUsers(prev => ({ ...prev, [socketId]: { userId: remoteUserId, username: remoteUsername, isMuted: remoteIsMuted, isDeafened: remoteIsDeafened } })); 
+        setRemoteUsers(prev => ({ ...prev, [socketId]: { userId: remoteUserId, username: remoteUsername } })); 
         const pc = createPeer(socketId, socket, localStreamRef.current);
         peersRef.current[socketId] = pc;
       });
@@ -175,20 +102,6 @@ export const useVoice = (channelId: string, userId: string) => {
       socket.on('ice-candidate', async ({ from, candidate }: IceCandidatePayload) => {
         const pc = peersRef.current[from];
         if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-
-      socket.on('user-muted', ({ socketId, isMuted: remoteMuted }: { socketId: string, isMuted: boolean }) => {
-        setRemoteUsers(prev => ({
-          ...prev,
-          [socketId]: { ...prev[socketId], isMuted: remoteMuted }
-        }));
-      });
-
-      socket.on('user-deafened', ({ socketId, isDeafened: remoteDeafened }: { socketId: string, isDeafened: boolean }) => {
-        setRemoteUsers(prev => ({
-          ...prev,
-          [socketId]: { ...prev[socketId], isDeafened: remoteDeafened }
-        }));
       });
 
       socket.on('user-left', ({ socketId }: { socketId: string }) => {
@@ -232,8 +145,6 @@ export const useVoice = (channelId: string, userId: string) => {
         socketRef.current.off('offer');
         socketRef.current.off('answer');
         socketRef.current.off('ice-candidate');
-        socketRef.current.off('user-muted');
-        socketRef.current.off('user-deafened');
         socketRef.current.off('user-left');
       }
       if (localStreamRef.current) {
@@ -244,102 +155,5 @@ export const useVoice = (channelId: string, userId: string) => {
     };
   }, [channelId, userId]);
 
-  // Effect to sync audio track state with mute/deafen state
-  useEffect(() => {
-    console.log(`[useVoice] Syncing tracks: isMuted=${isMuted}, isDeafened=${isDeafened}, audioTracks=${audioTracksRef.current.length}`);
-    if (isMuted || isDeafened) {
-      // Disable tracks when muted or deafened
-      audioTracksRef.current.forEach(track => {
-        console.log(`[useVoice] Disabling track:`, track);
-        track.enabled = false;
-      });
-    } else {
-      // Enable tracks when neither muted nor deafened
-      audioTracksRef.current.forEach(track => {
-        console.log(`[useVoice] Enabling track:`, track);
-        track.enabled = true;
-      });
-    }
-  }, [isMuted, isDeafened]);
-
-  // Control methods for mute/deafen - read state from localStorage to avoid stale closures
-  const muteAudio = useCallback(() => {
-    const { isDeafened: currentDeafened } = loadVoiceSettings();
-    console.log(`[useVoice] muteAudio called`);
-    setIsMuted(true);
-    audioTracksRef.current.forEach(track => {
-      console.log(`[useVoice] muteAudio: disabling track`, track);
-      track.enabled = false;
-    });
-    saveVoiceSettings(true, currentDeafened);
-    if (socketRef.current) {
-      console.log(`[useVoice] muteAudio: emitting user-muted event`);
-      socketRef.current.emit('user-muted', { channelId, userId, isMuted: true });
-    } else {
-      console.log(`[useVoice] muteAudio: socket not available!`);
-    }
-  }, [channelId, userId]);
-
-  const unmuteAudio = useCallback(() => {
-    const { isDeafened: currentDeafened } = loadVoiceSettings();
-    console.log(`[useVoice] unmuteAudio called`);
-    setIsMuted(false);
-    audioTracksRef.current.forEach(track => {
-      console.log(`[useVoice] unmuteAudio: enabling track (deafened=${currentDeafened})`, track);
-      track.enabled = !currentDeafened;
-    });
-    saveVoiceSettings(false, currentDeafened);
-    if (socketRef.current) {
-      console.log(`[useVoice] unmuteAudio: emitting user-muted event`);
-      socketRef.current.emit('user-muted', { channelId, userId, isMuted: false });
-    } else {
-      console.log(`[useVoice] unmuteAudio: socket not available!`);
-    }
-  }, [channelId, userId]);
-
-  const deafenAudio = useCallback(() => {
-    const { isMuted: currentMuted } = loadVoiceSettings();
-    console.log(`[useVoice] deafenAudio called`);
-    setIsDeafened(true);
-    audioTracksRef.current.forEach(track => {
-      console.log(`[useVoice] deafenAudio: disabling track`, track);
-      track.enabled = false;
-    });
-    saveVoiceSettings(currentMuted, true);
-    if (socketRef.current) {
-      console.log(`[useVoice] deafenAudio: emitting user-deafened event`);
-      socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: true });
-    } else {
-      console.log(`[useVoice] deafenAudio: socket not available!`);
-    }
-  }, [channelId, userId]);
-
-  const undeafenAudio = useCallback(() => {
-    const { isMuted: currentMuted } = loadVoiceSettings();
-    console.log(`[useVoice] undeafenAudio called`);
-    setIsDeafened(false);
-    audioTracksRef.current.forEach(track => {
-      console.log(`[useVoice] undeafenAudio: enabling track (muted=${currentMuted})`, track);
-      track.enabled = !currentMuted;
-    });
-    saveVoiceSettings(currentMuted, false);
-    if (socketRef.current) {
-      console.log(`[useVoice] undeafenAudio: emitting user-deafened event`);
-      socketRef.current.emit('user-deafened', { channelId, userId, isDeafened: false });
-    } else {
-      console.log(`[useVoice] undeafenAudio: socket not available!`);
-    }
-  }, [channelId, userId]);
-
-  return { 
-    isConnected, 
-    remoteStreams, 
-    remoteUsers,
-    isMuted,
-    isDeafened,
-    muteAudio,
-    unmuteAudio,
-    deafenAudio,
-    undeafenAudio,
-  };
+  return { isConnected, remoteStreams, remoteUsers };
 };

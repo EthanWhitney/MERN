@@ -25,7 +25,7 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  const availableAvatars = ['/avatars/dog.png', '/avatars/juan.png'];
+  const availableAvatars = ['/avatars/dog.jpg', '/avatars/juan.jpg', '/avatars/CoolLlama.jpg'];
 
   const userId = useMemo(() => {
     try {
@@ -62,15 +62,15 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
     }
   }, [isServerPage, serverId]);
 
-  const handleSelectProfilePicture = async (avatar: string) => {
-    setSelectedProfilePicture(avatar);
+  const handleSelectProfilePicture = async (avatar: string | null) => {
+    setSelectedProfilePicture(avatar || '');
     setError('');
     setSuccess('');
 
     // Auto-save global profile picture
     setLoadingProfilePicture(true);
     try {
-      const filename = avatar.split('/').pop() || avatar;
+      const filename = avatar ? (avatar.split('/').pop() || avatar) : '';
       const response = await authFetch('api/profile/updateProfilePicture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +88,7 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
         localStorage.setItem('user_data', JSON.stringify(parsed));
       }
 
-      setSuccess('Profile picture updated!');
+      setSuccess(avatar ? 'Profile picture updated!' : 'Profile picture removed. Now showing initials.');
       setTimeout(() => setSuccess(''), 2000);
       
       // Notify parent component to refresh server profiles cache if on server page
@@ -102,8 +102,8 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
     }
   };
 
-  const handleSelectServerPicture = (avatar: string) => {
-    setSelectedServerPicture(avatar);
+  const handleSelectServerPicture = (avatar: string | null) => {
+    setSelectedServerPicture(avatar || '');
     setError('');
   };
 
@@ -118,7 +118,7 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
     setSuccess('');
 
     try {
-      const filename = selectedServerPicture.split('/').pop() || selectedServerPicture;
+      const filename = selectedServerPicture ? (selectedServerPicture.split('/').pop() || selectedServerPicture) : '';
       const response = await authFetch(`api/servers/${serverId}/profile/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -141,7 +141,7 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
         })
       );
 
-      setSuccess('Server profile updated!');
+      setSuccess(selectedServerPicture ? 'Server profile updated!' : 'Server profile picture removed. Now showing initials.');
       setTimeout(() => setSuccess(''), 2000);
       
       // Notify parent component to refresh server profiles cache
@@ -174,6 +174,11 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
       setError(err.message || 'Failed to delete account');
       setIsDeletingAccount(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/login';
   };
 
   return (
@@ -217,6 +222,17 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
                 <div className="settings-panel">
                   <h3>Profile Picture</h3>
                   <div className="avatar-grid">
+                    <button
+                      key="initials"
+                      className={`avatar-option ${!selectedProfilePicture ? 'selected' : ''}`}
+                      onClick={() => handleSelectProfilePicture(null)}
+                      disabled={loadingProfilePicture}
+                    >
+                      <div className="initials-option">Use Initials</div>
+                      {!selectedProfilePicture && (
+                        <div className="checkmark">✓</div>
+                      )}
+                    </button>
                     {availableAvatars.map((avatar) => (
                       <button
                         key={avatar}
@@ -231,6 +247,13 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
                       </button>
                     ))}
                   </div>
+
+                  <button
+                    className="logout-button"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
 
                   <div className="danger-zone">
                     <h3>Danger Zone</h3>
@@ -263,6 +286,16 @@ const UserControlsOverlay = ({ onClose, isServerPage = false, serverId, onProfil
 
                   <h3>Server Profile Picture</h3>
                   <div className="avatar-grid">
+                    <button
+                      key="initials"
+                      className={`avatar-option ${!selectedServerPicture ? 'selected' : ''}`}
+                      onClick={() => handleSelectServerPicture(null)}
+                    >
+                      <div className="initials-option">Use Initials</div>
+                      {!selectedServerPicture && (
+                        <div className="checkmark">✓</div>
+                      )}
+                    </button>
                     {availableAvatars.map((avatar) => (
                       <button
                         key={avatar}

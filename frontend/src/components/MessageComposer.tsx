@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 type MessageComposerProps = {
   disabled?: boolean;
@@ -9,6 +10,7 @@ type MessageComposerProps = {
 function MessageComposer({ disabled = false, channelName, onSend }: MessageComposerProps) {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const placeholder = channelName ? `Message #${channelName}` : 'Select a channel to chat';
 
@@ -18,15 +20,21 @@ function MessageComposer({ disabled = false, channelName, onSend }: MessageCompo
     setSending(true);
     try {
       await onSend(trimmed);
-      setContent('');
-    } finally {
+      flushSync(() => {
+        setContent('');
+        setSending(false);
+      });
+      inputRef.current?.focus();
+    } catch (error) {
       setSending(false);
+      throw error;
     }
   };
 
   return (
     <div className="message-composer">
       <input
+        ref={inputRef}
         type="text"
         value={content}
         onChange={(e) => setContent(e.target.value)}

@@ -11,10 +11,11 @@ if (!client.topology || !client.topology.isConnected()) {
 // POST /api/servers
 const createServer = async (req, res) => {
   const { serverName, description } = req.body;
-  const ownerId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+
+    const ownerId = req.userId; // FIX: Pull directly from req.userId
     if (!serverName) {
       error = 'serverName is required';
       return res.status(400).json({ server: null, error });
@@ -26,16 +27,6 @@ const createServer = async (req, res) => {
     }
 
     const db = client.db('discord_clone');
-
-    // Check if server name already exists
-    const existingServer = await db.collection('servers').findOne({ 
-      serverName: { $regex: new RegExp(`^${serverName}$`, 'i') } 
-    });
-    
-    if (existingServer) {
-      error = 'A server with this name already exists';
-      return res.status(409).json({ server: null, error });
-    }
 
     const owner = await db.collection('users').findOne({ _id: ownerObjId });
     if (!owner) {
@@ -147,9 +138,11 @@ const getServer = async (req, res) => {
         _id: channel._id,
         channelID: channel._id,
         name: channel.channelName,
+        channelName: channel.channelName,
         topic: channel.topic,
         createdAt: channel.createdAt,
-        serverId: channel.serverId
+        serverId: channel.serverId,
+        activeMembers: channel.activeMembers || [],
       }));
     }
 
@@ -208,10 +201,11 @@ const updateServer = async (req, res) => {
 // DELETE /api/servers/:serverId
 const deleteServer = async (req, res) => {
   const { serverId } = req.params;
-  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+    const userId = req.userId; // FIX: Pull directly from req.userId
+
     if (!ObjectId.isValid(serverId)) {
       error = 'Invalid server ID';
       return res.status(400).json({ message: '', error });
@@ -257,10 +251,11 @@ const deleteServer = async (req, res) => {
 // get all servers a user belongs to
 // GET /api/users/servers
 const getUserServers = async (req, res) => {
-  const userId = req.user.userId; // Get from verified token
   let error = '';
 
   try {
+    const userId = req.user.userId; // Get from verified token
+
     if (!ObjectId.isValid(userId)) {
       error = 'Invalid user ID';
       return res.status(400).json({ servers: [], error });

@@ -11,6 +11,7 @@ import type { ChatMessage, Thread } from '../types/chat';
 import { authFetch } from '../utils/authFetch';
 import { toMessage } from '../utils/chatAdapter';
 import { onReceiveMessage, offReceiveMessage } from '../services/socketService';
+import eventDeduplication from '../services/eventDeduplication';
 
 export const useChatThread = (serverId?: string, channelId?: string, recieverId?: string) => {
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -109,6 +110,13 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
     const handleSocketMessage = (message: any) => {
       console.log('[useChatThread] Received socket message:', message);
 
+      // ========== PHASE 4.1: Event Deduplication ==========
+      // Skip duplicate messages received within 5s window
+      if (eventDeduplication.isDuplicate('receive-message', message)) {
+        console.log('[useChatThread] Duplicate message detected, skipping');
+        return;
+      }
+
       if (message.type === 'message-updated') {
         // Update existing message in state
         const messageId = message.messageId || message.message?._id || message.message?.id;
@@ -139,6 +147,7 @@ export const useChatThread = (serverId?: string, channelId?: string, recieverId?
       }
     };
 
+    // Register message callback
     onReceiveMessage(handleSocketMessage);
 
     return () => {

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './MessageGroup.css';
 import type { ChatMessage } from '../hooks/useFriendsChat';
+import { formatMessageTimestamp } from '../utils/formatMessageTimestamp';
 
 interface MessageGroupProps {
   senderUsername: string;
@@ -168,7 +169,7 @@ const MessageGroup: React.FC<MessageGroupProps> = ({
                   {senderUsername === '[Deleted User]' ? '(deleted)' : senderUsername}
                 </span>
                 <span className="message-time">
-                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : 'Just now'}
+                  {formatMessageTimestamp(msg.createdAt)}
                 </span>
               </div>
             )}
